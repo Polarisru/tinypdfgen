@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="Pdf Creator" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/Pdf Creator" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+					<Add directory="pdf" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/Release/Pdf Creator" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+		</Compiler>
+		<Unit filename="main.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="pdf/arc4.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="pdf/arc4.h" />
+		<Unit filename="pdf/md5.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="pdf/md5.h" />
+		<Unit filename="pdf/pdf.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="pdf/pdf.h" />
+		<Unit filename="pdf/pdf_font.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="pdf/pdf_font.h" />
+		<Unit filename="pdf/str_pdf.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="pdf/str_pdf.h" />
+		<Unit filename="pdf/utils.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="pdf/utils.h" />
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

@@ -1,0 +1,57 @@
+# depslib dependency file v1.0
+1508707753 source:e:\projects\pdfcreator\main.c
+	<stdio.h>
+	<stdlib.h>
+	"pdf.h"
+
+1484221264 source:e:\projects\pdfcreator\pdf\arc4.c
+	"arc4.h"
+
+1508674910 e:\projects\pdfcreator\pdf\arc4.h
+	<stdint.h>
+
+1473953914 source:e:\projects\pdfcreator\pdf\md5.c
+	<string.h>
+	"md5.h"
+
+1508674924 e:\projects\pdfcreator\pdf\md5.h
+	<stdint.h>
+
+1508708614 source:e:\projects\pdfcreator\pdf\pdf.c
+	<stdio.h>
+	<string.h>
+	"arc4.h"
+	"pdf_font.h"
+	"md5.h"
+	"pdf.h"
+	"str_pdf.h"
+	"utils.h"
+
+1508675302 e:\projects\pdfcreator\pdf\pdf_font.h
+	<stdint.h>
+
+1508676887 e:\projects\pdfcreator\pdf\pdf.h
+	<stdint.h>
+	<stdbool.h>
+	<stdio.h>
+	"arc4.h"
+	"md5.h"
+
+1508707750 e:\projects\pdfcreator\pdf\str_pdf.h
+	<stdint.h>
+
+1508677720 e:\projects\pdfcreator\pdf\utils.h
+	<stdint.h>
+	<stdbool.h>
+
+1483631488 source:e:\projects\pdfcreator\pdf\pdf_font.c
+	"pdf_font.h"
+
+1508707753 source:e:\projects\pdfcreator\pdf\str_pdf.c
+	"str_pdf.h"
+
+1492529916 source:e:\projects\pdfcreator\pdf\utils.c
+	<ctype.h>
+	<string.h>
+	"utils.h"
+
