@@ -5,8 +5,9 @@
 #include "pdf_font.h"
 #include "md5.h"
 #include "pdf.h"
-#include "str_pdf.h"
-#include "utils.h"
+#include "pdf_conf.h"
+#include "pdf_const.h"
+#include "pdf_wrapper.h"
 
 // --- PDF structure ---
 //object 1 - root
@@ -21,7 +22,7 @@
 //object 11 - font data (embedded font)
 //object 12 and following - text blocks and pages
 
-TPdfXref PDF_XrefTable[20000]; //big array in SDRAM to store objects positions
+uint16_t PDF_XrefTable[PDF_MAX_NUM]; //big array in to store objects positions
 
 uint32_t PDF_CurrObject;  //current PDF object
 uint16_t PDF_PageNum;     //number of the page
@@ -31,9 +32,36 @@ bool PDF_Encrypt;         //PDF document should be encrypted
 bool PDF_HasHeader;       //PDF document has header
 TPDFEncryptRec PDF_EncryptRec;
 
-//------------------------------------------------------------------------------
-// PDF_EscString - build escaped string
-//------------------------------------------------------------------------------
+/** \brief Convert byte value to HEX string
+ *
+ * \param [in] byte Byte value to convert
+ * \return String with HEX representation
+ *
+ */
+char *PDF_ByteToHex(uint8_t byte)
+{
+  static char str[3];
+
+  if ((byte>>4)>9)
+    str[0] = (byte>>4) - 10 + 'A';
+  else
+    str[0] = (byte>>4) + '0';
+  if ((byte&0x0F)>9)
+    str[1] = (byte&0x0F) - 10 + 'A';
+  else
+    str[1] = (byte&0x0F) + '0';
+  str[2] = 0;
+
+  return str;
+}
+
+/** \brief Build escaped string
+ *
+ * \param [out] str Output string
+ * \param [in] key Input string
+ * \return Length of new string
+ *
+ */
 uint8_t PDF_EscString(uint8_t *str, uint8_t *key)
 {
   uint8_t i;
@@ -57,9 +85,13 @@ uint8_t PDF_EscString(uint8_t *str, uint8_t *key)
   return len;
 }
 
-//------------------------------------------------------------------------------
-// PDF_PadOrTrancatePasswd - pad or truncate initial password to standard length
-//------------------------------------------------------------------------------
+/** \brief Pad or truncate initial password to standard length
+ *
+ * \param
+ * \param
+ * \return
+ *
+ */
 void PDF_PadOrTruncatePasswd(const char *pwd, uint8_t *new_pwd)
 {
   uint8_t len = strlen(pwd);
@@ -79,9 +111,13 @@ void PDF_PadOrTruncatePasswd(const char *pwd, uint8_t *new_pwd)
   }
 }
 
-//------------------------------------------------------------------------------
-// PDF_Encrypt_Init - initialize encryption structure
-//------------------------------------------------------------------------------
+/** \brief Initialize encryption structure
+ *
+ * \param
+ * \param
+ * \return
+ *
+ */
 void PDF_Encrypt_Init(TPDFEncryptRec *attr)
 {
   memset(attr, 0, sizeof(TPDFEncryptRec));
@@ -92,9 +128,12 @@ void PDF_Encrypt_Init(TPDFEncryptRec *attr)
   attr->permission = PDF_ENABLE_PRINT | PDF_PERMISSION_PAD; //other available options: PDF_ENABLE_EDIT_ALL | PDF_ENABLE_COPY | PDF_ENABLE_EDIT
 }
 
-//------------------------------------------------------------------------------
-// PDF_Encrypt_CreateOwnerKey - create owner key (PDF spec. Algorithm 3.3)
-//------------------------------------------------------------------------------
+/** \brief Create owner key (PDF spec. Algorithm 3.3)
+ *
+ * \param
+ * \return
+ *
+ */
 void PDF_Encrypt_CreateOwnerKey(TPDFEncryptRec *attr)
 {
   ARC4_Ctx_Rec rc4_ctx;
@@ -149,9 +188,13 @@ void PDF_Encrypt_CreateOwnerKey(TPDFEncryptRec *attr)
   memcpy(attr->owner_key, tmppwd, PDF_PASSWD_LEN);
 }
 
-//------------------------------------------------------------------------------
-// PDF_Encrypt_CreateEncryptionKey - create encryption key
-//------------------------------------------------------------------------------
+/** \brief Create encryption key
+ *
+ * \param
+ * \param
+ * \return
+ *
+ */
 void PDF_Encrypt_CreateEncryptionKey(TPDFEncryptRec *attr)
 {
   TMD5Context md5_ctx;
@@ -189,9 +232,13 @@ void PDF_Encrypt_CreateEncryptionKey(TPDFEncryptRec *attr)
   }
 }
 
-//------------------------------------------------------------------------------
-// PDF_Encrypt_CreateUserKey - create user key (PDF spec. Algorithm 3.5)
-//------------------------------------------------------------------------------
+/** \brief Create user key (PDF spec. Algorithm 3.5)
+ *
+ * \param
+ * \param
+ * \return
+ *
+ */
 void PDF_Encrypt_CreateUserKey(TPDFEncryptRec *attr)
 {
   ARC4_Ctx_Rec ctx;
@@ -241,9 +288,13 @@ void PDF_Encrypt_CreateUserKey(TPDFEncryptRec *attr)
   }
 }
 
-//------------------------------------------------------------------------------
-// PDF_Encrypt_InitKey - initialize encryption key
-//------------------------------------------------------------------------------
+/** \brief Initialize encryption key
+ *
+ * \param
+ * \param
+ * \return
+ *
+ */
 void PDF_Encrypt_InitKey(TPDFEncryptRec *attr, uint32_t object_id, uint16_t gen_no)
 {
   TMD5Context md5_ctx;
@@ -264,9 +315,13 @@ void PDF_Encrypt_InitKey(TPDFEncryptRec *attr, uint32_t object_id, uint16_t gen_
   ARC4_Init(&attr->arc4ctx, attr->md5_encryption_key, key_len);
 }
 
-//------------------------------------------------------------------------------
-// PDF_Encrypt_Reset
-//------------------------------------------------------------------------------
+/** \brief Reset PDF ecnryption (ARC4)
+ *
+ * \param
+ * \param
+ * \return
+ *
+ */
 void PDF_Encrypt_Reset(TPDFEncryptRec *attr)
 {
   uint8_t key_len = (attr->key_len + 5 > PDF_ENCRYPT_KEY_MAX) ? PDF_ENCRYPT_KEY_MAX : attr->key_len + 5;
@@ -274,65 +329,16 @@ void PDF_Encrypt_Reset(TPDFEncryptRec *attr)
   ARC4_Init(&attr->arc4ctx, attr->md5_encryption_key, key_len);
 }
 
-//------------------------------------------------------------------------------
-// PDF_Encrypt_CryptBuf - encrypt buffer with ARC4
-//------------------------------------------------------------------------------
+/** \brief Encrypt buffer with ARC4
+ *
+ * \param
+ * \param
+ * \return
+ *
+ */
 void PDF_Encrypt_CryptBuf(TPDFEncryptRec *attr, uint8_t *src, uint8_t *dst, uint32_t len)
 {
   ARC4_CryptBuf(&attr->arc4ctx, src, dst, len);
-}
-
-//------------------------------------------------------------------------------
-// PDF_StartGenerate - initialize everything to start generating PDF file
-//------------------------------------------------------------------------------
-FILE* PDF_Start(uint32_t counter, bool encrypt, char *name)
-{
-  uint8_t i;
-  char str[16];
-  TMD5Context md5_ctx;
-  FILE* fd = NULL;
-
-  PDF_CurrObject = PDF_OBJNUM_LAST;
-  PDF_PageNum = 0;
-  PDF_LastObject = PDF_CurrObject;
-  PDF_Encrypt = encrypt;
-  PDF_HasHeader = false;
-  for (i=PDF_OBJNUM_ZERO; i<=PDF_OBJNUM_LAST; i++)
-  {
-    PDF_XrefTable[i].Position = 0;
-    PDF_XrefTable[i].isPage = false;
-  }
-  //generate encryption keys
-  PDF_Encrypt_Init(&PDF_EncryptRec);
-  //generate file ID from serial number and test number/length of audit trail
-  memcpy(str, PDF_DUMMY_ID, PDF_ID_LEN);
-  //memcpy(&str[16], PDF_DUMMY_ID, PDF_ID_LEN);
-  //REMARK: for some strings md5 hash is right but is not accepted, decoding doesn't work!
-  sprintf(str, "%d", counter); //ID string should be 16 bytes or longer!
-  str[strlen(str)] = 0x20;
-  MD5_Init(&md5_ctx);
-  MD5_Update(&md5_ctx, (uint8_t*)str, PDF_ID_LEN);
-  MD5_Final(PDF_EncryptRec.encrypt_id, &md5_ctx);
-  if (PDF_Encrypt)
-  {
-    PDF_Encrypt_CreateOwnerKey(&PDF_EncryptRec);
-    PDF_Encrypt_CreateEncryptionKey(&PDF_EncryptRec);
-    PDF_Encrypt_CreateUserKey(&PDF_EncryptRec);
-  }
-
-  fd = fopen(name, "w");
-  if (fd!=NULL)
-  {
-    fwrite(PDF_HEADER, 1, strlen(PDF_HEADER), fd);
-    PDF_XrefTable[PDF_OBJNUM_ROOT].Position = ftell(fd);
-    fwrite(PDF_FIRST_OBJECT, 1, strlen(PDF_FIRST_OBJECT), fd);
-    PDF_XrefTable[PDF_OBJNUM_RESOURCES].Position = ftell(fd);
-    fwrite(PDF_RESOURCE_OBJECT, 1, strlen(PDF_RESOURCE_OBJECT), fd);
-    PDF_XrefTable[PDF_OBJNUM_FONT1].Position = ftell(fd);
-    fwrite(PDF_FONT1_OBJECT, 1, strlen(PDF_FONT1_OBJECT), fd);
-  }
-
-  return fd;
 }
 
 //------------------------------------------------------------------------------
@@ -624,7 +630,7 @@ FILE* PDF_Start(uint32_t counter, bool encrypt, char *name)
       //write trailer section
       strcpy(str2, STRINGS_Empty);
       for (len=0; len<PDF_ID_LEN; len++)
-        strcat(str2, UTILS_ToHex(PDF_EncryptRec.encrypt_id[len]));
+        strcat(str2, PDF_ByteToHex(PDF_EncryptRec.encrypt_id[len]));
       if (PDF_Encrypt)
         sprintf(str, PDF_TRAILER_ENC, PDF_CurrObject, str2, str2);
       else
@@ -774,13 +780,126 @@ FILE* PDF_Start(uint32_t counter, bool encrypt, char *name)
   return FR_OK;
 }*/
 
-void PDF_WritePage(FILE *fd)
+uint16_t PDF_PrepareString(char *src, char* dst, uint16_t num)
+{
+  uint16_t len;
+
+  len = strlen(src);
+  #ifdef PDF_USE_ENCRYPT
+    PDF_Encrypt_InitKey(&PDF_EncryptRec, num, 0);
+    PDF_Encrypt_CryptBuf(&PDF_EncryptRec, (uint8_t*)src, (uint8_t*)dst, len);
+  #else
+    strcpy(src, dest);
+  #endif // PDF_USE_ENCRYPT
+  return len;
+}
+
+/** \brief Initialize everything to start generating PDF file
+ *
+ * \param [in] name Name of file to write
+ * \return FILE pointer
+ *
+ */
+FILE* PDF_Start(char *name, char *title, char *author)
+{
+  uint8_t i;
+  char str[64];
+  uint16_t len;
+  TMD5Context md5_ctx;
+  FILE* fd = NULL;
+
+  PDF_CurrObject = PDF_OBJNUM_LAST;
+  PDF_PageNum = 0;
+  PDF_LastObject = PDF_CurrObject;
+  PDF_HasHeader = false;
+  PDF_XrefPos = 0;
+  for (i=PDF_OBJNUM_ZERO; i<=PDF_OBJNUM_LAST; i++)
+  {
+    PDF_XrefTable[i] = 0;
+  }
+  //generate encryption keys
+  PDF_Encrypt_Init(&PDF_EncryptRec);
+  //generate file ID from serial number and test number/length of audit trail
+  memcpy(str, PDF_DUMMY_ID, PDF_ID_LEN);
+  //memcpy(&str[16], PDF_DUMMY_ID, PDF_ID_LEN);
+  //REMARK: for some strings md5 hash is right but is not accepted, decoding doesn't work!
+  sprintf(str, "%d", PDF_RAND()); //ID string should be 16 bytes or longer!
+  str[strlen(str)] = 0x20;
+  MD5_Init(&md5_ctx);
+  MD5_Update(&md5_ctx, (uint8_t*)str, PDF_ID_LEN);
+  MD5_Final(PDF_EncryptRec.encrypt_id, &md5_ctx);
+  #ifdef PDF_USE_ENCRYPT
+    PDF_Encrypt_CreateOwnerKey(&PDF_EncryptRec);
+    PDF_Encrypt_CreateEncryptionKey(&PDF_EncryptRec);
+    PDF_Encrypt_CreateUserKey(&PDF_EncryptRec);
+  #endif // PDF_USE_ENCRYPT
+
+  fd = fopen(name, "w");
+  if (fd!=NULL)
+  {
+    /**< write header */
+    fwrite(PDF_HEADER, 1, strlen(PDF_HEADER), fd);
+    PDF_XrefTable[PDF_OBJNUM_ROOT] = ftell(fd);
+    /**< write root object */
+    fwrite(PDF_FIRST_OBJECT, 1, strlen(PDF_FIRST_OBJECT), fd);
+    PDF_XrefTable[PDF_OBJNUM_RESOURCES] = ftell(fd);
+    fwrite(PDF_RESOURCE_OBJECT, 1, strlen(PDF_RESOURCE_OBJECT), fd);
+    #ifdef PDF_USE_EMBFONT
+    #else
+      PDF_XrefTable[PDF_OBJNUM_FONT1] = ftell(fd);
+      fwrite(PDF_FONT1_OBJECT, 1, strlen(PDF_FONT1_OBJECT), fd);
+    #endif // PDF_USE_EMBFONT
+    #ifdef PDF_USE_ENCRYPT
+      PDF_XrefTable[PDF_OBJNUM_ENC] = ftell(fd);
+      fwrite(PDF_ENC_OBJ_START, 1, strlen(PDF_ENC_OBJ_START), fd);
+      i = PDF_EscString((uint8_t*)str, PDF_EncryptRec.user_key); //encoded string could contains '()\', so escape them
+      fwrite(str, 1, i, fd);
+      fwrite(PDF_ENC_OBJ_MID, 1, strlen(PDF_ENC_OBJ_MID), fd);
+      i = PDF_EscString((uint8_t*)str, PDF_EncryptRec.owner_key); //encoded string could contains '()\', so escape them
+      fwrite(str, 1, i, fd);
+      sprintf(str, PDF_ENC_OBJ_END, PDF_EncryptRec.permission);
+      fwrite(str, 1, strlen(str), fd);
+    #endif
+    /**< write info module */
+    PDF_XrefTable[PDF_OBJNUM_INFO] = ftell(fd);
+    fwrite(PDF_INFO_OBJ_1, 1, strlen(PDF_INFO_OBJ_1), fd);
+    len = PDF_PrepareString(title, str, PDF_OBJNUM_INFO);
+    fwrite(str, 1, len, fd);
+    fwrite(PDF_INFO_OBJ_2, 1, strlen(PDF_INFO_OBJ_2), fd);
+    len = PDF_PrepareString(author, str, PDF_OBJNUM_INFO);
+    fwrite(str, 1, len, fd);
+    fwrite(PDF_INFO_OBJ_3, 1, strlen(PDF_INFO_OBJ_3), fd);
+    len = PDF_PrepareString(PDF_GEN_NAME, str, PDF_OBJNUM_INFO);
+    fwrite(str, 1, len, fd);
+    fwrite(PDF_INFO_OBJ_4, 1, strlen(PDF_INFO_OBJ_4), fd);
+    sprintf(str, PDF_DATE_FMT, 2017, 10, 22, 23, 7, 11);
+    len = PDF_PrepareString(str, str, PDF_OBJNUM_INFO);
+    fwrite(str, 1, len, fd);
+    fwrite(PDF_INFO_OBJ_5, 1, strlen(PDF_INFO_OBJ_5), fd);
+  }
+
+  return fd;
+}
+
+/** \brief Write page object to document
+ *
+ * \param
+ * \param
+ * \return
+ *
+ */
+
+uint8_t PDF_WritePage(FILE *fd)
 {
   uint32_t len;
   char str[64];
+  uint32_t pos = ftell(fd);
 
-  PDF_XrefTable[PDF_CurrObject].Position = ftell(fd);
-  PDF_XrefTable[PDF_CurrObject].isPage = true;
+  if ((pos - PDF_XrefPos) > PDF_MAX_BLOCKLEN)
+    return PDF_ERR_LONGBLOCK;
+  PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos) | PDF_BIT_PAGE;
+  PDF_XrefPos = pos;
+  //PDF_XrefTable[PDF_CurrObject].isPage = true;
   sprintf(str, PDF_PAGE_OBJ_START, PDF_CurrObject);
   fwrite(str, 1, strlen(str), fd);
   for (len=PDF_LastObject; len<PDF_CurrObject; len++)
@@ -791,23 +910,48 @@ void PDF_WritePage(FILE *fd)
   fwrite(PDF_PAGE_OBJ_END, 1, strlen(PDF_PAGE_OBJ_END), fd);
   PDF_CurrObject++;
   PDF_LastObject = PDF_CurrObject;
+
+  return PDF_ERR_NONE;
 }
 
-void PDF_AddPage(FILE *fd)
+/** \brief Add new page
+ *
+ * \param
+ * \param
+ * \return
+ *
+ */
+uint8_t PDF_AddPage(FILE *fd)
 {
+  uint8_t ret = PDF_ERR_NONE;
+
   if (PDF_CurrObject>PDF_LastObject)
-    PDF_WritePage(fd);
+    ret = PDF_WritePage(fd);
   PDF_PageNum++;
+
+  return ret;
 }
 
-void PDF_AddText(FILE *fd, uint16_t x, uint16_t y, char *text)
+/** \brief Add text to existing page
+ *
+ * \param
+ * \param
+ * \param
+ * \return
+ *
+ */
+uint8_t PDF_AddText(FILE *fd, uint16_t x, uint16_t y, char *text)
 {
   char str[64];
   char str2[64];
   uint16_t len;
+  uint32_t pos = ftell(fd);
 
-  PDF_XrefTable[PDF_CurrObject].Position = ftell(fd);
-  sprintf(str, PDF_TEXT_START, 12, x, y);
+  if ((pos - PDF_XrefPos) > PDF_MAX_BLOCKLEN)
+    return PDF_ERR_LONGBLOCK;
+  PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos);
+  PDF_XrefPos = pos;
+  sprintf(str, PDF_TEXT_START, 12, x, PDF_PAGE_HEIGHT - y);
   len = strlen(str);
   len += strlen(text);
   len += strlen(PDF_TEXT_END);
@@ -820,65 +964,91 @@ void PDF_AddText(FILE *fd, uint16_t x, uint16_t y, char *text)
   fwrite(PDF_TEXT_END, 1, strlen(PDF_TEXT_END), fd);
   fwrite(PDF_STREAM_OBJ_END, 1, strlen(PDF_STREAM_OBJ_END), fd);
   PDF_CurrObject++;
+
+  return PDF_ERR_NONE;
 }
 
-void PDF_Finish(FILE *fd)
+/** \brief Finish PDF generation, close handlers, save tables and write end of the file
+ *
+ * \param
+ * \param
+ * \return
+ *
+ */
+uint8_t PDF_Finish(FILE *fd)
 {
   char str[64];
+  char str2[64];
   uint32_t len;
+  uint32_t pos;
 
   /**< write last page if it's not stored */
   if (PDF_CurrObject>PDF_LastObject)
     PDF_WritePage(fd);
   /**< write pages list */
-  PDF_XrefTable[PDF_OBJNUM_PAGES].Position = ftell(fd);
+  PDF_XrefTable[PDF_OBJNUM_PAGES] = ftell(fd);
   sprintf(str, PDF_PAGES_OBJ_START, PDF_PageNum);
   fwrite(str, 1, strlen(str), fd);
   for (len=PDF_OBJNUM_LAST; len<=PDF_CurrObject; len++)
   {
-    if (PDF_XrefTable[len].isPage)
+    if (PDF_XrefTable[len] & PDF_BIT_PAGE)
     {
+      PDF_XrefTable[len] &= ~PDF_BIT_PAGE;
       sprintf(str, PDF_CONT_FMT, len);
       fwrite(str, 1, strlen(str), fd);
     }
   }
   fwrite(PDF_PAGES_OBJ_END, 1, strlen(PDF_PAGES_OBJ_END), fd);
-  /**< write info module */
-  PDF_XrefTable[PDF_OBJNUM_INFO].Position = ftell(fd);
-  fwrite(PDF_INFO_OBJ_1, 1, strlen(PDF_INFO_OBJ_1), fd);
-  fwrite(PDF_INFO_OBJ_2, 1, strlen(PDF_INFO_OBJ_2), fd);
-  fwrite(PDF_INFO_OBJ_3, 1, strlen(PDF_INFO_OBJ_3), fd);
-  fwrite("TinyPDFGen", 1, strlen("TinyPDFGen"), fd);
-  fwrite(PDF_INFO_OBJ_4, 1, strlen(PDF_INFO_OBJ_4), fd);
-  sprintf(str, PDF_DATE_FMT, 2017, 10, 22, 23, 7, 11);
-  fwrite(str, 1, strlen(str), fd);
-  fwrite(PDF_INFO_OBJ_5, 1, strlen(PDF_INFO_OBJ_5), fd);
   /**< write xref table */
   //fwrite(PDF_ENDLINE, 1, strlen(PDF_ENDLINE), fd);
   //get XREF position
-  PDF_XrefPos = ftell(fd);
+  pos = ftell(fd);
   sprintf(str, PDF_XREF_START, PDF_CurrObject);
   fwrite(str, 1, strlen(str), fd);
   //write first record
   fwrite(PDF_XREF_FIRST, 1, strlen(PDF_XREF_FIRST), fd);
   //write all xref records from array
+  PDF_XrefPos = 0;
   for (len=PDF_OBJNUM_ROOT; len<PDF_CurrObject; len++)
   {
-    if (PDF_XrefTable[len].Position>0)
-      sprintf(str, PDF_XREF_RECORD, PDF_XrefTable[len].Position, 'n');
-    else
+    if (PDF_XrefTable[len]>0)
+    {
+      if (len < PDF_OBJNUM_LAST)
+      {
+        sprintf(str, PDF_XREF_RECORD, PDF_XrefTable[len], 'n');
+      } else
+      {
+        PDF_XrefPos += PDF_XrefTable[len];
+        sprintf(str, PDF_XREF_RECORD, PDF_XrefPos, 'n');
+      }
+    } else
+    {
       sprintf(str, PDF_XREF_RECORD, 0, 'f');
+    }
     fwrite(str, 1, strlen(str), fd);
   }
   /**< write trailer */
-  sprintf(str, PDF_TRAILER, PDF_CurrObject, "", "");
+  sprintf(str, PDF_TRAILER_START, PDF_CurrObject);
   fwrite(str, 1, strlen(str), fd);
+  #ifdef PDF_USE_ENCRYPT
+    fwrite(PDF_TRAILER_ENC, 1, strlen(PDF_TRAILER_ENC), fd);
+  #endif // PDF_USE_ENCRYPT
+  fwrite(PDF_TRAILER_MID, 1, strlen(PDF_TRAILER_MID), fd);
+  strcpy(str2, "<");
+  for (len=0; len<PDF_ID_LEN; len++)
+    strcat(str2, PDF_ByteToHex(PDF_EncryptRec.encrypt_id[len]));
+  strcat(str2, ">");
+  fwrite(str2, 1, strlen(str2), fd); /* print ID twice! */
+  fwrite(str2, 1, strlen(str2), fd);
+  fwrite(PDF_TRAILER_END, 1, strlen(PDF_TRAILER_END), fd);
   /**< write xref start position */
-  sprintf(str, PDF_XREF_END, PDF_XrefPos);
+  sprintf(str, PDF_XREF_END, pos);
   fwrite(str, 1, strlen(str), fd);
   /**< write ending of the file */
   fwrite(PDF_EOF, 1, strlen(PDF_EOF), fd);
 
   /**< close PDF file */
   fclose(fd);
+
+  return PDF_ERR_NONE;
 }

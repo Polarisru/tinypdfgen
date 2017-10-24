@@ -1,4 +1,4 @@
-#include "str_pdf.h"
+#include "pdf_const.h"
 
 const char PDF_HEADER[] = "%PDF-1.4\n%\xE2\xE3\xD2\xD3\n\n";
 const char PDF_FIRST_OBJECT[] = "1 0 obj\n<< /Type /Catalog /Pages 2 0 R>>\nendobj\n";
@@ -29,8 +29,10 @@ const char PDF_INFO_OBJ_2[] = ") /Author (";
 const char PDF_INFO_OBJ_3[] = ") /Creator (";
 const char PDF_INFO_OBJ_4[] = ") /CreationDate (";
 const char PDF_INFO_OBJ_5[] = ")>>\nendobj\n";
-const char PDF_TRAILER[] = "trailer <</Size %d /Root 1 0 R /Info 7 0 R /ID[<%s><%s>]>>\n";
-const char PDF_TRAILER_ENC[] = "trailer <</Size %d /Root 1 0 R /Info 7 0 R /Encrypt 6 0 R /ID [<%s><%s>] >>\n";
+const char PDF_TRAILER_START[] = "trailer <</Size %d /Root 1 0 R /Info 7 0 R ";
+const char PDF_TRAILER_MID[] = "/ID [";
+const char PDF_TRAILER_END[] = "] >>\n";
+const char PDF_TRAILER_ENC[] = "/Encrypt 6 0 R ";
 const char PDF_EOF[] = "%%EOF\n";
 const char PDF_TEXT_START[] = "BT /F1 %d Tf %d %d Td (";
 const char PDF_TEXT_END[] = ") Tj ET\n";
@@ -38,14 +40,6 @@ const char PDF_STREAM_OBJ_START[] = "%d 0 obj\n<< /Length %d >>\nstream\n";
 const char PDF_STREAM_FONTOBJ_START[] = "%d 0 obj\n<< /Length %d /Length1 %d /Length2 0 /Length3 0 >>\nstream\n";
 const char PDF_STREAM_OBJ_END[] = "endstream\nendobj\n";
 const char PDF_STREAM_OBJ_END2[] = "\nendstream\nendobj\n";
-//const char PDF_BLOCK_HEADER1[] = "BT /F2 14 Tf 250 790 Td (Audit protocol) Tj ET\n";
-//const char PDF_BLOCK_HEADER1[] = "BT /F2 13 Tf 250 790 Td (%s) Tj ET\n";
-const char PDF_BLOCK_HEADER1[] = "BT 2 Tr /F1 13 Tf 250 790 Td (%s) Tj 0 Tr ET\n";
-const char PDF_BLOCK_HEADER2[] = "BT /F1 13 Tf 450 790 Td (Page    / %d) Tj ET\n";
-const char PDF_BLOCK_HEADER3[] = "BT /F1 13 Tf 70 765 Td (Printed by: %s) Tj ET BT 330 765 Td (Printed at: %s) Tj ET\n";
-const char PDF_BLOCK_HEADER4[] = "BT /F1 13 Tf 70 740 Td (Device S/N: %s) Tj ET BT 330 740 Td (Firmware version: %s) Tj ET\n";
-const char PDF_BLOCK_HEADER5[] = "50 725 515 90 re 50 35 m 565 35 l h S\n";
-const char PDF_NUMPAGE_TEXT[] = "BT /F1 14 Tf 475 790 Td (%4d) Tj ET\n";
 
 const char PDF_XREF_START[] = "xref\n0 %d\n";
 const char PDF_XREF_FIRST[] = "0000000000 65535 f \n";

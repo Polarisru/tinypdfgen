@@ -47,18 +47,16 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="pdf/pdf.h" />
+		<Unit filename="pdf/pdf_conf.h" />
+		<Unit filename="pdf/pdf_const.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="pdf/pdf_const.h" />
 		<Unit filename="pdf/pdf_font.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="pdf/pdf_font.h" />
-		<Unit filename="pdf/str_pdf.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="pdf/str_pdf.h" />
-		<Unit filename="pdf/utils.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="pdf/utils.h" />
+		<Unit filename="pdf/pdf_wrapper.h" />
 		<Extensions>
 			<code_completion />
 			<envvars />

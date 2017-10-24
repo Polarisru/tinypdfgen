@@ -28,6 +28,15 @@
 #define PDF_TEXT_TOPY           21
 #define PDF_PAGE_HEIGHT         842
 
+#define PDF_BIT_PAGE            0x8000
+#define PDF_MAX_BLOCKLEN        0x7FFF
+
+#define PDF_ERR_NONE            0
+#define PDF_ERR_FILE            1
+#define PDF_ERR_LONGBLOCK       2
+#define PDF_ERR_MAXNUM          3
+
+
 enum PDF_TITLES
 {
   PDF_TITLE_A,
@@ -109,22 +118,13 @@ typedef struct
 
 typedef struct
 {
-  char *Title;
-  char *Date;
-  char *User;
-  char *Serial;
-  char *Firmware;
-  uint16_t Pages;
-} TPdfHeader;
-
-typedef struct
-{
-  uint32_t Position;
-  bool isPage;
+  uint16_t Position;
 } TPdfXref;
 
-extern FILE* PDF_Start(uint32_t counter, bool encrypt, char *name);
-extern void PDF_Write(FILE *fdst, uint8_t type, void *data);
-extern void PDF_Finish(FILE *fd);
+extern FILE* PDF_Start(char *name, char *title, char *author);
+extern uint8_t PDF_Write(FILE *fdst, uint8_t type, void *data);
+extern uint8_t PDF_AddPage(FILE *fd);
+extern uint8_t PDF_AddText(FILE *fd, uint16_t x, uint16_t y, char *text);
+extern uint8_t PDF_Finish(FILE *fd);
 
 #endif
