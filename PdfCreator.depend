@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1508707753 source:e:\projects\pdfcreator\main.c
+1508871079 source:e:\projects\pdfcreator\main.c
 	<stdio.h>
 	<stdlib.h>
 	"pdf.h"
@@ -17,20 +17,21 @@
 1508674924 e:\projects\pdfcreator\pdf\md5.h
 	<stdint.h>
 
-1508708614 source:e:\projects\pdfcreator\pdf\pdf.c
+1508880701 source:e:\projects\pdfcreator\pdf\pdf.c
 	<stdio.h>
 	<string.h>
 	"arc4.h"
-	"pdf_font.h"
 	"md5.h"
 	"pdf.h"
-	"str_pdf.h"
-	"utils.h"
+	"pdf_conf.h"
+	"pdf_const.h"
+	"pdf_font.h"
+	"pdf_wrapper.h"
 
 1508675302 e:\projects\pdfcreator\pdf\pdf_font.h
 	<stdint.h>
 
-1508676887 e:\projects\pdfcreator\pdf\pdf.h
+1508871079 e:\projects\pdfcreator\pdf\pdf.h
 	<stdint.h>
 	<stdbool.h>
 	<stdio.h>
@@ -122,4 +123,16 @@
 
 1508850358 e:\projects\tinypdfgen\pdf\pdf_wrapper.h
 	<stdlib.h>
+
+1508874282 source:e:\projects\pdfcreator\pdf\pdf_const.c
+	"pdf_const.h"
+
+1508874337 e:\projects\pdfcreator\pdf\pdf_const.h
+	<stdint.h>
+
+1508874282 e:\projects\pdfcreator\pdf\pdf_conf.h
+
+1508881574 e:\projects\pdfcreator\pdf\pdf_wrapper.h
+	<stdlib.h>
+	<time.h>
 

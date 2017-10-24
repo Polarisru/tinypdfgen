@@ -52,12 +52,7 @@ extern const char PDF_XREF_FIRST[];
 extern const char PDF_XREF_RECORD[];
 extern const char PDF_XREF_END[];
 extern const char PDF_CONT_FMT[];
-
-extern const char PDF_AUDIT_TITLE[];
-extern const char PDF_TEST_TITLE[];
-extern const char PDF_TEXT_CREATOR[];
 extern const char PDF_DATE_FMT[];
-extern const char PDF_OWNER_PASS[];
 
 extern const char PDF_ENDLINE[];
 

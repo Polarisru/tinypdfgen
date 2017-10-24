@@ -2,14 +2,16 @@
 #include <string.h>
 
 #include "arc4.h"
-#include "pdf_font.h"
 #include "md5.h"
 #include "pdf.h"
 #include "pdf_conf.h"
 #include "pdf_const.h"
+#ifdef PDF_USE_EMBFONT
+  #include "pdf_font.h"
+#endif // PDF_USE_EMBFONT
 #include "pdf_wrapper.h"
 
-// --- PDF structure ---
+// --- PDF objects structure ---
 //object 1 - root
 //object 2 - pages, generate at the end
 //object 3 - resources (fonts)
@@ -22,15 +24,13 @@
 //object 11 - font data (embedded font)
 //object 12 and following - text blocks and pages
 
-uint16_t PDF_XrefTable[PDF_MAX_NUM]; //big array in to store objects positions
+uint16_t PDF_XrefTable[PDF_MAX_NUM]; //big array to store objects positions
 
 uint32_t PDF_CurrObject;  //current PDF object
 uint16_t PDF_PageNum;     //number of the page
-uint32_t PDF_LastObject;
-uint32_t PDF_XrefPos;
-bool PDF_Encrypt;         //PDF document should be encrypted
-bool PDF_HasHeader;       //PDF document has header
-TPDFEncryptRec PDF_EncryptRec;
+uint32_t PDF_LastObject;  //last saved PDF object
+uint32_t PDF_XrefPos;     //current Xref position
+TPDFEncryptRec PDF_EncryptRec;  //structure for encrypting the document
 
 /** \brief Convert byte value to HEX string
  *
@@ -780,16 +780,18 @@ void PDF_Encrypt_CryptBuf(TPDFEncryptRec *attr, uint8_t *src, uint8_t *dst, uint
   return FR_OK;
 }*/
 
-uint16_t PDF_PrepareString(char *src, char* dst, uint16_t num)
+uint16_t PDF_PrepareString(char *src, char* dst, uint16_t num, bool init)
 {
   uint16_t len;
 
   len = strlen(src);
   #ifdef PDF_USE_ENCRYPT
-    PDF_Encrypt_InitKey(&PDF_EncryptRec, num, 0);
+    if (init)
+      PDF_Encrypt_InitKey(&PDF_EncryptRec, num, 0);
     PDF_Encrypt_CryptBuf(&PDF_EncryptRec, (uint8_t*)src, (uint8_t*)dst, len);
   #else
-    strcpy(src, dest);
+    if (src!=dest)
+      strcpy(src, dest);
   #endif // PDF_USE_ENCRYPT
   return len;
 }
@@ -809,9 +811,8 @@ FILE* PDF_Start(char *name, char *title, char *author)
   FILE* fd = NULL;
 
   PDF_CurrObject = PDF_OBJNUM_LAST;
-  PDF_PageNum = 0;
   PDF_LastObject = PDF_CurrObject;
-  PDF_HasHeader = false;
+  PDF_PageNum = 0;
   PDF_XrefPos = 0;
   for (i=PDF_OBJNUM_ZERO; i<=PDF_OBJNUM_LAST; i++)
   {
@@ -823,7 +824,8 @@ FILE* PDF_Start(char *name, char *title, char *author)
   memcpy(str, PDF_DUMMY_ID, PDF_ID_LEN);
   //memcpy(&str[16], PDF_DUMMY_ID, PDF_ID_LEN);
   //REMARK: for some strings md5 hash is right but is not accepted, decoding doesn't work!
-  sprintf(str, "%d", PDF_RAND()); //ID string should be 16 bytes or longer!
+  PDF_SRAND;
+  sprintf(str, "%d%d", PDF_RAND, PDF_RAND); //ID string should be 16 bytes or longer!
   str[strlen(str)] = 0x20;
   MD5_Init(&md5_ctx);
   MD5_Update(&md5_ctx, (uint8_t*)str, PDF_ID_LEN);
@@ -834,14 +836,15 @@ FILE* PDF_Start(char *name, char *title, char *author)
     PDF_Encrypt_CreateUserKey(&PDF_EncryptRec);
   #endif // PDF_USE_ENCRYPT
 
-  fd = fopen(name, "w");
+  fd = fopen(name, "wb");
   if (fd!=NULL)
   {
     /**< write header */
-    fwrite(PDF_HEADER, 1, strlen(PDF_HEADER), fd);
+    if (PDF_WRITE(fd, PDF_HEADER, strlen(PDF_HEADER))!=strlen(PDF_HEADER));//fwrite(PDF_HEADER, 1, strlen(PDF_HEADER), fd);
+      return NULL;
     PDF_XrefTable[PDF_OBJNUM_ROOT] = ftell(fd);
     /**< write root object */
-    fwrite(PDF_FIRST_OBJECT, 1, strlen(PDF_FIRST_OBJECT), fd);
+    PDF_WRITE(fd, PDF_FIRST_OBJECT, strlen(PDF_FIRST_OBJECT));//fwrite(PDF_FIRST_OBJECT, 1, strlen(PDF_FIRST_OBJECT), fd);
     PDF_XrefTable[PDF_OBJNUM_RESOURCES] = ftell(fd);
     fwrite(PDF_RESOURCE_OBJECT, 1, strlen(PDF_RESOURCE_OBJECT), fd);
     #ifdef PDF_USE_EMBFONT
@@ -863,17 +866,17 @@ FILE* PDF_Start(char *name, char *title, char *author)
     /**< write info module */
     PDF_XrefTable[PDF_OBJNUM_INFO] = ftell(fd);
     fwrite(PDF_INFO_OBJ_1, 1, strlen(PDF_INFO_OBJ_1), fd);
-    len = PDF_PrepareString(title, str, PDF_OBJNUM_INFO);
+    len = PDF_PrepareString(title, str, PDF_OBJNUM_INFO, true);
     fwrite(str, 1, len, fd);
     fwrite(PDF_INFO_OBJ_2, 1, strlen(PDF_INFO_OBJ_2), fd);
-    len = PDF_PrepareString(author, str, PDF_OBJNUM_INFO);
+    len = PDF_PrepareString(author, str, PDF_OBJNUM_INFO, true);
     fwrite(str, 1, len, fd);
     fwrite(PDF_INFO_OBJ_3, 1, strlen(PDF_INFO_OBJ_3), fd);
-    len = PDF_PrepareString(PDF_GEN_NAME, str, PDF_OBJNUM_INFO);
+    len = PDF_PrepareString(PDF_GEN_NAME, str, PDF_OBJNUM_INFO, true);
     fwrite(str, 1, len, fd);
     fwrite(PDF_INFO_OBJ_4, 1, strlen(PDF_INFO_OBJ_4), fd);
     sprintf(str, PDF_DATE_FMT, 2017, 10, 22, 23, 7, 11);
-    len = PDF_PrepareString(str, str, PDF_OBJNUM_INFO);
+    len = PDF_PrepareString(str, str, PDF_OBJNUM_INFO, true);
     fwrite(str, 1, len, fd);
     fwrite(PDF_INFO_OBJ_5, 1, strlen(PDF_INFO_OBJ_5), fd);
   }
@@ -957,11 +960,12 @@ uint8_t PDF_AddText(FILE *fd, uint16_t x, uint16_t y, char *text)
   len += strlen(PDF_TEXT_END);
   sprintf(str2, PDF_STREAM_OBJ_START, PDF_CurrObject, len);
   fwrite(str2, 1, strlen(str2), fd);
+  len = PDF_PrepareString(str, str, PDF_CurrObject, true);
   fwrite(str, 1, strlen(str), fd);
-  len += strlen(text);
-  fwrite(text, 1, strlen(text), fd);
-  len += strlen(PDF_TEXT_END);
-  fwrite(PDF_TEXT_END, 1, strlen(PDF_TEXT_END), fd);
+  len = PDF_PrepareString(text, str, PDF_CurrObject, false);
+  fwrite(str, 1, len, fd);
+  len = PDF_PrepareString((char*)PDF_TEXT_END, str, PDF_CurrObject, false);
+  fwrite(str, 1, len, fd);
   fwrite(PDF_STREAM_OBJ_END, 1, strlen(PDF_STREAM_OBJ_END), fd);
   PDF_CurrObject++;
 

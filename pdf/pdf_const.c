@@ -46,12 +46,7 @@ const char PDF_XREF_FIRST[] = "0000000000 65535 f \n";
 const char PDF_XREF_RECORD[] = "%010d 00000 %c \n";
 const char PDF_XREF_END[] = "startxref\n%d\n";
 const char PDF_CONT_FMT[] = "%d 0 R ";
-
-const char PDF_AUDIT_TITLE[] = "Audit protocol";
-const char PDF_TEST_TITLE[] = "Test protocol";
-const char PDF_TEXT_CREATOR[] = "Erweka PDF";
 const char PDF_DATE_FMT[] = "%4d%02d%02d%02d%02d%02dZ";
-const char PDF_OWNER_PASS[] = "ERWEKA911";
 
 const char PDF_ENDLINE[] = "\n";
 
