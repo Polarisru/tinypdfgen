@@ -57,6 +57,9 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="pdf/pdf_font.h" />
+		<Unit filename="pdf/pdf_wrapper.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="pdf/pdf_wrapper.h" />
 		<Extensions>
 			<code_completion />

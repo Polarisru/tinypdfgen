@@ -1,11 +1,13 @@
 #ifndef _PDF_WRAPPER_H
 #define _PDF_WRAPPER_H
 
-#include <stdlib.h>
-#include <time.h>
+#include <stdint.h>
+#include <stdbool.h>
 
-#define PDF_RAND                  rand()
-#define PDF_SRAND                 srand(time(0))
-#define PDF_WRITE(fd, buf, size)  fwrite(buf, 1, size, fd)
+extern uint32_t PDF_WR_rand(void);
+extern void PDF_WR_srand(void);
+extern bool PDF_WR_fwrite(FILE* fd, const void* buf, uint16_t len);
+extern uint32_t PDF_WR_ftell(FILE* fd);
+extern void PDF_WR_fclose(FILE* fd);
 
 #endif // _PDF_WRAPPER_H

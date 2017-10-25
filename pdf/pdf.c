@@ -62,27 +62,25 @@ char *PDF_ByteToHex(uint8_t byte)
  * \return Length of new string
  *
  */
-uint8_t PDF_EscString(uint8_t *str, uint8_t *key)
+uint8_t PDF_EscString(uint8_t *str, uint8_t *key, uint16_t len)
 {
   uint8_t i;
-  uint8_t len = 0;
+  uint8_t res = 0;
 
-  for (i=0; i<PDF_PASSWD_LEN; i++)
+  for (i=0; i<len; i++)
   {
     switch (key[i])
     {
       case '(':
       case ')':
       case '\\':
-        str[len] = '\\';
-        len++;
+        str[res++] = '\\';
         break;
     }
-    str[len] = key[i];
-    len++;
+    str[res++] = key[i];
   }
 
-  return len;
+  return res;
 }
 
 /** \brief Pad or truncate initial password to standard length
@@ -121,11 +119,12 @@ void PDF_PadOrTruncatePasswd(const char *pwd, uint8_t *new_pwd)
 void PDF_Encrypt_Init(TPDFEncryptRec *attr)
 {
   memset(attr, 0, sizeof(TPDFEncryptRec));
-  attr->mode = PDF_ENCRYPT_R2; // PDF_ENCRYPT_R3 not tested yet
+  attr->mode = PDF_ENCRYPT_R3;
   attr->key_len = 5;
   PDF_PadOrTruncatePasswd(PDF_OWNER_PASS, attr->owner_passwd);
   memcpy(attr->user_passwd, PDF_PADDING_STRING, PDF_PASSWD_LEN);
-  attr->permission = PDF_ENABLE_PRINT | PDF_PERMISSION_PAD; //other available options: PDF_ENABLE_EDIT_ALL | PDF_ENABLE_COPY | PDF_ENABLE_EDIT
+  attr->permission = PDF_ENABLE_PRINT | PDF_PERMISSION_PAD;
+  /* other available options: PDF_ENABLE_EDIT_ALL | PDF_ENABLE_COPY | PDF_ENABLE_EDIT */
 }
 
 /** \brief Create owner key (PDF spec. Algorithm 3.3)
@@ -355,43 +354,12 @@ void PDF_Encrypt_CryptBuf(TPDFEncryptRec *attr, uint8_t *src, uint8_t *dst, uint
   uint32_t pos;
   uint32_t len;
 
-  pos = ftell(fdst); //save current file position
+  pos = PDF_WR_ftell(fdst); //save current file position
 
   PDF_XrefTable[PDF_CurrObject].isPage = false;
 
   switch (type)
   {
-    case PDF_OBJECT_ZERO:
-      //write standard PDF header
-      strcpy(str, PDF_HEADER);
-      break;
-    case PDF_OBJECT_ROOT:
-      //root object
-      strcpy(str, PDF_FIRST_OBJECT);
-      PDF_XrefTable[PDF_OBJNUM_ROOT].Position = pos;
-      break;
-    case PDF_OBJECT_PAGES:
-      //object with all pages of the document
-      //print root object with pages as kids
-      sprintf(str2, PDF_PAGES_OBJ_START, PDF_PageNum);
-      br = strlen(str2);
-      fr = fwrite(fdst, str2, br, &bw);
-      if (fr==0)
-        return fr;
-      for (len=PDF_OBJNUM_LAST; len<=PDF_CurrObject; len++)
-      {
-        if (PDF_XrefTable[len].isPage)
-        {
-          sprintf(str2, PDF_CONT_FMT, len);
-          br = strlen(str2);
-          fr = f_write(fdst, str2, br, &bw);
-          if (fr!=FR_OK)
-            return fr;
-        }
-      }
-      strcpy(str, PDF_PAGES_OBJ_END);
-      PDF_XrefTable[PDF_OBJNUM_PAGES].Position = pos;
-      break;
     case PDF_OBJECT_RESOURCES:
       //resources object
       strcpy(str, PDF_RESOURCE_OBJECT);
@@ -409,263 +377,6 @@ void PDF_Encrypt_CryptBuf(TPDFEncryptRec *attr, uint8_t *src, uint8_t *dst, uint
         strcpy(str, PDF_FONT2_OBJECT);
         PDF_XrefTable[PDF_OBJNUM_FONT2].Position = pos;
       }
-      break;
-    case PDF_OBJECT_ENC:
-      //build encrypted object
-      if (PDF_Encrypt)
-      {
-        PDF_XrefTable[PDF_OBJNUM_ENC].Position = pos;
-        br = strlen(PDF_ENC_OBJ_START);
-        fr = f_write(fdst, PDF_ENC_OBJ_START, br, &bw);
-        if (fr!=FR_OK)
-          return fr;
-        br = PDF_EscString((uint8_t*)str, PDF_EncryptRec.user_key); //encoded string could contains '()\', so escape them
-        fr = f_write(fdst, str, br, &bw);
-        if (fr!=FR_OK)
-          return fr;
-        br = strlen(PDF_ENC_OBJ_MID);
-        fr = f_write(fdst, PDF_ENC_OBJ_MID, br, &bw);
-        if (fr!=FR_OK)
-          return fr;
-        br = PDF_EscString((uint8_t*)str, PDF_EncryptRec.owner_key); //encoded string could contains '()\', so escape them
-        fr = f_write(fdst, str, br, &bw);
-        if (fr!=FR_OK)
-          return fr;
-        sprintf(str, PDF_ENC_OBJ_END, PDF_EncryptRec.permission);
-      } else
-      {
-        strcpy(str, "");
-      }
-      break;
-    case PDF_OBJECT_INFO:
-      //information about document - title, author, creator
-      PDF_XrefTable[PDF_OBJNUM_INFO].Position = pos;
-      br = strlen(PDF_INFO_OBJ_1);
-      fr = f_write(fdst, PDF_INFO_OBJ_1, br, &bw);
-      if (fr!=FR_OK)
-        return fr;
-      if (*((int*)data)==PDF_TITLE_A)
-        strcpy(str, PDF_AUDIT_TITLE);
-      else
-        strcpy(str, PDF_TEST_TITLE);
-      len = strlen(str);
-      if (PDF_Encrypt)
-      {
-        //encrypt string
-        PDF_Encrypt_InitKey(&PDF_EncryptRec, PDF_OBJNUM_INFO, 0);
-        PDF_Encrypt_CryptBuf(&PDF_EncryptRec, (uint8_t*)str, (uint8_t*)str2, len);
-        fr = f_write(fdst, str2, len, &bw);
-      } else
-      {
-        fr = f_write(fdst, str, len, &bw);
-      }
-      br = strlen(PDF_INFO_OBJ_2);
-      fr = f_write(fdst, PDF_INFO_OBJ_2, br, &bw);
-      if (fr!=FR_OK)
-        return fr;
-      strcpy(str, globalName);
-      len = strlen(str);
-      if (PDF_Encrypt)
-      {
-        //encrypt string
-        PDF_Encrypt_InitKey(&PDF_EncryptRec, PDF_OBJNUM_INFO, 0);
-        PDF_Encrypt_CryptBuf(&PDF_EncryptRec, (uint8_t*)str, (uint8_t*)str2, len);
-        fr = f_write(fdst, str2, len, &bw);
-      } else
-      {
-        fr = f_write(fdst, str, len, &bw);
-      }
-      br = strlen(PDF_INFO_OBJ_3);
-      fr = f_write(fdst, PDF_INFO_OBJ_3, br, &bw);
-      if (fr!=FR_OK)
-        return fr;
-      strcpy(str, PDF_TEXT_CREATOR);
-      len = strlen(str);
-      if (PDF_Encrypt)
-      {
-        //encrypt string
-        PDF_Encrypt_InitKey(&PDF_EncryptRec, PDF_OBJNUM_INFO, 0);
-        PDF_Encrypt_CryptBuf(&PDF_EncryptRec, (uint8_t*)str, (uint8_t*)str2, len);
-        fr = f_write(fdst, str2, len, &bw);
-      } else
-      {
-        fr = f_write(fdst, str, len, &bw);
-      }
-      br = strlen(PDF_INFO_OBJ_4);
-      fr = f_write(fdst, PDF_INFO_OBJ_4, br, &bw);
-      if (fr!=FR_OK)
-        return fr;
-      sprintf(str, PDF_DATE_FMT, globalDateTime.Year+2000, globalDateTime.Month, globalDateTime.Day, globalDateTime.Hour, globalDateTime.Minute, globalDateTime.Second);
-      len = strlen(str);
-      if (PDF_Encrypt)
-      {
-        //encrypt string
-        PDF_Encrypt_InitKey(&PDF_EncryptRec, PDF_OBJNUM_INFO, 0);
-        PDF_Encrypt_CryptBuf(&PDF_EncryptRec, (uint8_t*)str, (uint8_t*)str2, len);
-        fr = f_write(fdst, str2, len, &bw);
-      } else
-      {
-        fr = f_write(fdst, str, len, &bw);
-      }
-      strcpy(str, PDF_INFO_OBJ_5);
-      break;
-    case PDF_OBJECT_PAGE:
-      //make page object from header and string objects
-      PDF_XrefTable[PDF_CurrObject].Position = pos;
-      PDF_XrefTable[PDF_CurrObject].isPage = true;
-      sprintf(str2, PDF_PAGE_OBJ_START, PDF_CurrObject);
-      br = strlen(str2);
-      fr = f_write(fdst, str2, br, &bw);
-      if (fr!=FR_OK)
-        return fr;
-      if (PDF_HasHeader)
-      {
-        sprintf(str2, PDF_CONT_FMT, PDF_OBJNUM_HEADER);
-        br = strlen(str2);
-        fr = f_write(fdst, str2, br, &bw);
-        if (fr!=FR_OK)
-          return fr;
-      }
-      for (len=PDF_LastObject; len<PDF_CurrObject; len++)
-      {
-        sprintf(str2, PDF_CONT_FMT, len);
-        br = strlen(str2);
-        fr = f_write(fdst, str2, br, &bw);
-        if (fr!=FR_OK)
-          return fr;
-      }
-      strcpy(str, PDF_PAGE_OBJ_END);
-      PDF_PageNum++;
-      PDF_CurrObject++;
-      PDF_LastObject = PDF_CurrObject;
-      break;
-    case PDF_OBJECT_NUMPAGE:
-      //number of page
-      PDF_XrefTable[PDF_CurrObject].Position = pos;
-      len = *((int*)data);
-      sprintf(str, PDF_NUMPAGE_TEXT, len);
-      len = strlen(str);
-      sprintf(str2, PDF_STREAM_OBJ_START, PDF_CurrObject, len);
-      br = strlen(str2);
-      fr = f_write(fdst, str2, br, &bw);
-      if (fr!=FR_OK)
-        return fr;
-      if (PDF_Encrypt)
-      {
-        //encrypt string
-        PDF_Encrypt_InitKey(&PDF_EncryptRec, PDF_CurrObject, 0);
-        PDF_Encrypt_CryptBuf(&PDF_EncryptRec, (uint8_t*)str, (uint8_t*)str2, len);
-        fr = f_write(fdst, str2, len, &bw);
-      } else
-      {
-        fr = f_write(fdst, str, len, &bw);
-      }
-      strcpy(str, PDF_STREAM_OBJ_END);
-      PDF_CurrObject++;
-      break;
-    case PDF_OBJECT_HEADER:
-      //header object (only for audit trail)
-      PDF_XrefTable[PDF_OBJNUM_HEADER].Position = pos;
-      pdfHeader = (TPdfHeader*)data;
-      sprintf(str, PDF_BLOCK_HEADER1, pdfHeader->Title);
-      sprintf(str2, PDF_BLOCK_HEADER2, pdfHeader->Pages);
-      strcat(str, str2);
-      sprintf(str2, PDF_BLOCK_HEADER3, pdfHeader->User, pdfHeader->Date);
-      strcat(str, str2);
-      sprintf(str2, PDF_BLOCK_HEADER4, pdfHeader->Serial, pdfHeader->Firmware);
-      strcat(str, str2);
-      strcat(str, PDF_BLOCK_HEADER5);
-      len = strlen(str);
-      sprintf(str2, PDF_STREAM_OBJ_START, PDF_OBJNUM_HEADER, len);
-      br = strlen(str2);
-      fr = f_write(fdst, str2, br, &bw);
-      if (fr!=FR_OK)
-        return fr;
-      if (PDF_Encrypt)
-      {
-        //encrypt string
-        PDF_Encrypt_InitKey(&PDF_EncryptRec, PDF_OBJNUM_HEADER, 0);
-        PDF_Encrypt_CryptBuf(&PDF_EncryptRec, (uint8_t*)str, (uint8_t*)str2, len);
-        fr = f_write(fdst, str2, len, &bw);
-      } else
-      {
-        fr = f_write(fdst, str, len, &bw);
-      }
-      strcpy(str, PDF_STREAM_OBJ_END);
-      PDF_HasHeader = true;
-      break;
-    case PDF_OBJECT_XREF:
-      //xref object
-      //write end line first, should be two between main data and xref
-      fr = f_write(fdst, STRINGS_EndString, 1, &bw);
-      if (fr!=FR_OK)
-        return fr;
-      //get XREF position
-      PDF_XrefPos = f_tell(fdst);
-      sprintf(str, PDF_XREF_START, PDF_CurrObject);
-      br = strlen(str);
-      fr = f_write(fdst, str, br, &bw);
-      if (fr!=FR_OK)
-        return fr;
-      //write first record
-      br = strlen(PDF_XREF_FIRST);
-      fr = f_write(fdst, PDF_XREF_FIRST, br, &bw);
-      if (fr!=FR_OK)
-        return fr;
-      //write all xref records from array
-      for (len=PDF_OBJNUM_ROOT; len<PDF_CurrObject; len++)
-      {
-        if (PDF_XrefTable[len].Position>0)
-          sprintf(str, PDF_XREF_RECORD, PDF_XrefTable[len].Position, 'n');
-        else
-          sprintf(str, PDF_XREF_RECORD, 0, 'f');
-        br = strlen(str);
-        fr = f_write(fdst, str, br, &bw);
-        if (fr!=FR_OK)
-          return fr;
-      }
-      strcpy(str, STRINGS_Empty);
-      break;
-    case PDF_OBJECT_TRAILER:
-      //write trailer section
-      strcpy(str2, STRINGS_Empty);
-      for (len=0; len<PDF_ID_LEN; len++)
-        strcat(str2, PDF_ByteToHex(PDF_EncryptRec.encrypt_id[len]));
-      if (PDF_Encrypt)
-        sprintf(str, PDF_TRAILER_ENC, PDF_CurrObject, str2, str2);
-      else
-        sprintf(str, PDF_TRAILER, PDF_CurrObject, str2, str2);
-      break;
-    case PDF_OBJECT_END:
-      //write xref section position and ending of the file
-      sprintf(str, PDF_XREF_END, PDF_XrefPos);
-      strcat(str, PDF_EOF);
-      break;
-    case PDF_OBJECT_TEXT:
-      //simple text object
-      PDF_XrefTable[PDF_CurrObject].Position = pos; //save current file position
-      pdfText = (TPdfText*)data;
-      sprintf(str, PDF_TEXT, pdfText->Size, pdfText->X, pdfText->Y, pdfText->Text);
-      len = strlen(str);
-      sprintf(str2, PDF_STREAM_OBJ_START, PDF_CurrObject, len);
-      br = strlen(str2);
-      fr = f_write(fdst, str2, br, &bw);
-      if (fr!=FR_OK)
-        return fr;
-      if (PDF_Encrypt)
-      {
-        //encrypt string
-        PDF_Encrypt_InitKey(&PDF_EncryptRec, PDF_CurrObject, 0);
-        PDF_Encrypt_CryptBuf(&PDF_EncryptRec, (uint8_t*)str, (uint8_t*)str2, len);
-        fr = f_write(fdst, str2, len, &bw);
-      } else
-      {
-        fr = f_write(fdst, str, len, &bw);
-      }
-      if (fr!=FR_OK)
-        return fr;
-      strcpy(str, PDF_STREAM_OBJ_END);
-      PDF_CurrObject++;
       break;
     case PDF_OBJECT_GRAPH:
       //graphical object, write without text pattern
@@ -768,31 +479,33 @@ void PDF_Encrypt_CryptBuf(TPDFEncryptRec *attr, uint8_t *src, uint8_t *dst, uint
       strcpy(str, PDF_STREAM_OBJ_END2);
       break;
   }
-
-  br = strlen(str);
-  if (br>0)
-  {
-    fr = f_write(fdst, str, br, &bw);
-    if (fr!=FR_OK)
-      return fr;
-  }
-
-  return FR_OK;
 }*/
 
-uint16_t PDF_PrepareString(char *src, char* dst, uint16_t num, bool init)
+uint16_t PDF_PrepareString(char *src, char* dst, bool doEsc, uint16_t num, bool init)
 {
   uint16_t len;
+  char temp[PDF_BLOCK_SIZE+1];
 
   len = strlen(src);
+  if (len > PDF_BLOCK_SIZE)
+    len = PDF_BLOCK_SIZE;
   #ifdef PDF_USE_ENCRYPT
     if (init)
       PDF_Encrypt_InitKey(&PDF_EncryptRec, num, 0);
-    PDF_Encrypt_CryptBuf(&PDF_EncryptRec, (uint8_t*)src, (uint8_t*)dst, len);
+    PDF_Encrypt_CryptBuf(&PDF_EncryptRec, (uint8_t*)src, (uint8_t*)temp, len);
+    if (doEsc)
+      len = PDF_EscString((uint8_t*)dst, (uint8_t*)temp, len);
+    else
+      memcpy(dst, temp, len); /* not string already! */
   #else
-    if (src!=dest)
-      strcpy(src, dest);
+    strncpy(temp, src, PDF_BLOCK_SIZE);
+    temp[PDF_BLOCK_SIZE] = 0;
+    if (doEsc)
+      len = PDF_EscString((uint8_t*)dst, (uint8_t*)temp, len);
+    else
+      strcpy(dst, temp);
   #endif // PDF_USE_ENCRYPT
+
   return len;
 }
 
@@ -805,7 +518,7 @@ uint16_t PDF_PrepareString(char *src, char* dst, uint16_t num, bool init)
 FILE* PDF_Start(char *name, char *title, char *author)
 {
   uint8_t i;
-  char str[64];
+  char str[PDF_BLOCK_SIZE*2];
   uint16_t len;
   TMD5Context md5_ctx;
   FILE* fd = NULL;
@@ -824,8 +537,8 @@ FILE* PDF_Start(char *name, char *title, char *author)
   memcpy(str, PDF_DUMMY_ID, PDF_ID_LEN);
   //memcpy(&str[16], PDF_DUMMY_ID, PDF_ID_LEN);
   //REMARK: for some strings md5 hash is right but is not accepted, decoding doesn't work!
-  PDF_SRAND;
-  sprintf(str, "%d%d", PDF_RAND, PDF_RAND); //ID string should be 16 bytes or longer!
+  PDF_WR_srand();
+  sprintf(str, "%d%d", PDF_WR_rand(), PDF_WR_rand()); //ID string should be 16 bytes or longer!
   str[strlen(str)] = 0x20;
   MD5_Init(&md5_ctx);
   MD5_Update(&md5_ctx, (uint8_t*)str, PDF_ID_LEN);
@@ -837,51 +550,73 @@ FILE* PDF_Start(char *name, char *title, char *author)
   #endif // PDF_USE_ENCRYPT
 
   fd = fopen(name, "wb");
-  if (fd!=NULL)
+  while (fd!=NULL)
   {
     /**< write header */
-    if (PDF_WRITE(fd, PDF_HEADER, strlen(PDF_HEADER))!=strlen(PDF_HEADER));//fwrite(PDF_HEADER, 1, strlen(PDF_HEADER), fd);
-      return NULL;
-    PDF_XrefTable[PDF_OBJNUM_ROOT] = ftell(fd);
+    if (!PDF_WR_fwrite(fd, PDF_HEADER, strlen(PDF_HEADER)))
+      break;
+    PDF_XrefTable[PDF_OBJNUM_ROOT] = PDF_WR_ftell(fd);
     /**< write root object */
-    PDF_WRITE(fd, PDF_FIRST_OBJECT, strlen(PDF_FIRST_OBJECT));//fwrite(PDF_FIRST_OBJECT, 1, strlen(PDF_FIRST_OBJECT), fd);
-    PDF_XrefTable[PDF_OBJNUM_RESOURCES] = ftell(fd);
-    fwrite(PDF_RESOURCE_OBJECT, 1, strlen(PDF_RESOURCE_OBJECT), fd);
+    if (!PDF_WR_fwrite(fd, PDF_FIRST_OBJECT, strlen(PDF_FIRST_OBJECT)))
+      break;
+    PDF_XrefTable[PDF_OBJNUM_RESOURCES] = PDF_WR_ftell(fd);
+    if (!PDF_WR_fwrite(fd, PDF_RESOURCE_OBJECT, strlen(PDF_RESOURCE_OBJECT)))
+      break;
     #ifdef PDF_USE_EMBFONT
     #else
-      PDF_XrefTable[PDF_OBJNUM_FONT1] = ftell(fd);
-      fwrite(PDF_FONT1_OBJECT, 1, strlen(PDF_FONT1_OBJECT), fd);
+      PDF_XrefTable[PDF_OBJNUM_FONT1] = PDF_WR_ftell(fd);
+      if (!PDF_WR_fwrite(fd, PDF_FONT1_OBJECT, strlen(PDF_FONT1_OBJECT)))
+        break;
     #endif // PDF_USE_EMBFONT
     #ifdef PDF_USE_ENCRYPT
-      PDF_XrefTable[PDF_OBJNUM_ENC] = ftell(fd);
-      fwrite(PDF_ENC_OBJ_START, 1, strlen(PDF_ENC_OBJ_START), fd);
-      i = PDF_EscString((uint8_t*)str, PDF_EncryptRec.user_key); //encoded string could contains '()\', so escape them
-      fwrite(str, 1, i, fd);
-      fwrite(PDF_ENC_OBJ_MID, 1, strlen(PDF_ENC_OBJ_MID), fd);
-      i = PDF_EscString((uint8_t*)str, PDF_EncryptRec.owner_key); //encoded string could contains '()\', so escape them
-      fwrite(str, 1, i, fd);
+      PDF_XrefTable[PDF_OBJNUM_ENC] = PDF_WR_ftell(fd);
+      if (!PDF_WR_fwrite(fd, PDF_ENC_OBJ_START, strlen(PDF_ENC_OBJ_START)))
+        break;
+      i = PDF_EscString((uint8_t*)str, PDF_EncryptRec.user_key, PDF_PASSWD_LEN); //encoded string could contains '()\', so escape them
+      if (!PDF_WR_fwrite(fd, str, i))
+        break;
+      if (!PDF_WR_fwrite(fd, PDF_ENC_OBJ_MID, strlen(PDF_ENC_OBJ_MID)))
+        break;
+      i = PDF_EscString((uint8_t*)str, PDF_EncryptRec.owner_key, PDF_PASSWD_LEN); //encoded string could contains '()\', so escape them
+      if (!PDF_WR_fwrite(fd, str, i))
+        break;
       sprintf(str, PDF_ENC_OBJ_END, PDF_EncryptRec.permission);
-      fwrite(str, 1, strlen(str), fd);
+      if (!PDF_WR_fwrite(fd, str, strlen(str)))
+        break;
     #endif
     /**< write info module */
-    PDF_XrefTable[PDF_OBJNUM_INFO] = ftell(fd);
-    fwrite(PDF_INFO_OBJ_1, 1, strlen(PDF_INFO_OBJ_1), fd);
-    len = PDF_PrepareString(title, str, PDF_OBJNUM_INFO, true);
-    fwrite(str, 1, len, fd);
-    fwrite(PDF_INFO_OBJ_2, 1, strlen(PDF_INFO_OBJ_2), fd);
-    len = PDF_PrepareString(author, str, PDF_OBJNUM_INFO, true);
-    fwrite(str, 1, len, fd);
-    fwrite(PDF_INFO_OBJ_3, 1, strlen(PDF_INFO_OBJ_3), fd);
-    len = PDF_PrepareString(PDF_GEN_NAME, str, PDF_OBJNUM_INFO, true);
-    fwrite(str, 1, len, fd);
-    fwrite(PDF_INFO_OBJ_4, 1, strlen(PDF_INFO_OBJ_4), fd);
+    PDF_XrefTable[PDF_OBJNUM_INFO] = PDF_WR_ftell(fd);
+    if (!PDF_WR_fwrite(fd, PDF_INFO_OBJ_1, strlen(PDF_INFO_OBJ_1)))
+      break;
+    len = PDF_PrepareString(title, str, true, PDF_OBJNUM_INFO, true);
+    if (!PDF_WR_fwrite(fd, str, len))
+      break;
+    if (!PDF_WR_fwrite(fd, PDF_INFO_OBJ_2, strlen(PDF_INFO_OBJ_2)))
+      break;
+    len = PDF_PrepareString(author, str, true, PDF_OBJNUM_INFO, true);
+    if (!PDF_WR_fwrite(fd, str, len))
+      break;
+    if (!PDF_WR_fwrite(fd, PDF_INFO_OBJ_3, strlen(PDF_INFO_OBJ_3)))
+      break;
+    len = PDF_PrepareString(PDF_GEN_NAME, str, true, PDF_OBJNUM_INFO, true);
+    if (!PDF_WR_fwrite(fd, str, len))
+      break;
+    if (!PDF_WR_fwrite(fd, PDF_INFO_OBJ_4, strlen(PDF_INFO_OBJ_4)))
+      break;
     sprintf(str, PDF_DATE_FMT, 2017, 10, 22, 23, 7, 11);
-    len = PDF_PrepareString(str, str, PDF_OBJNUM_INFO, true);
-    fwrite(str, 1, len, fd);
-    fwrite(PDF_INFO_OBJ_5, 1, strlen(PDF_INFO_OBJ_5), fd);
-  }
+    len = PDF_PrepareString(str, str, true, PDF_OBJNUM_INFO, true);
+    if (!PDF_WR_fwrite(fd, str, len))
+      break;
+    if (!PDF_WR_fwrite(fd, PDF_INFO_OBJ_5, strlen(PDF_INFO_OBJ_5)))
+      break;
 
-  return fd;
+    return fd;
+  }
+  /* close file handler, error occurred */
+  if (fd!=NULL)
+    PDF_WR_fclose(fd);
+
+  return NULL;
 }
 
 /** \brief Write page object to document
@@ -891,26 +626,32 @@ FILE* PDF_Start(char *name, char *title, char *author)
  * \return
  *
  */
-
 uint8_t PDF_WritePage(FILE *fd)
 {
   uint32_t len;
   char str[64];
-  uint32_t pos = ftell(fd);
+  uint32_t pos = PDF_WR_ftell(fd);
 
   if ((pos - PDF_XrefPos) > PDF_MAX_BLOCKLEN)
     return PDF_ERR_LONGBLOCK;
+
+  if (PDF_CurrObject>=PDF_MAX_NUM)
+    return PDF_ERR_MAXNUM;
+
   PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos) | PDF_BIT_PAGE;
   PDF_XrefPos = pos;
   //PDF_XrefTable[PDF_CurrObject].isPage = true;
   sprintf(str, PDF_PAGE_OBJ_START, PDF_CurrObject);
-  fwrite(str, 1, strlen(str), fd);
+  if (!PDF_WR_fwrite(fd, str, strlen(str)))
+    return PDF_ERR_FILE;
   for (len=PDF_LastObject; len<PDF_CurrObject; len++)
   {
     sprintf(str, PDF_CONT_FMT, len);
-    fwrite(str, 1, strlen(str), fd);
+    if (!PDF_WR_fwrite(fd, str, strlen(str)))
+      return PDF_ERR_FILE;
   }
-  fwrite(PDF_PAGE_OBJ_END, 1, strlen(PDF_PAGE_OBJ_END), fd);
+  if (!PDF_WR_fwrite(fd, PDF_PAGE_OBJ_END, strlen(PDF_PAGE_OBJ_END)))
+    return PDF_ERR_FILE;
   PDF_CurrObject++;
   PDF_LastObject = PDF_CurrObject;
 
@@ -937,7 +678,7 @@ uint8_t PDF_AddPage(FILE *fd)
 
 /** \brief Add text to existing page
  *
- * \param
+ * \param [in] fd File descriptor
  * \param
  * \param
  * \return
@@ -945,13 +686,17 @@ uint8_t PDF_AddPage(FILE *fd)
  */
 uint8_t PDF_AddText(FILE *fd, uint16_t x, uint16_t y, char *text)
 {
-  char str[64];
-  char str2[64];
+  char str[PDF_BLOCK_SIZE*2];
+  char str2[PDF_BLOCK_SIZE*2];
   uint16_t len;
-  uint32_t pos = ftell(fd);
+  uint32_t pos = PDF_WR_ftell(fd);
+
+  if (PDF_CurrObject>=PDF_MAX_NUM)
+    return PDF_ERR_MAXNUM;
 
   if ((pos - PDF_XrefPos) > PDF_MAX_BLOCKLEN)
     return PDF_ERR_LONGBLOCK;
+
   PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos);
   PDF_XrefPos = pos;
   sprintf(str, PDF_TEXT_START, 12, x, PDF_PAGE_HEIGHT - y);
@@ -959,14 +704,19 @@ uint8_t PDF_AddText(FILE *fd, uint16_t x, uint16_t y, char *text)
   len += strlen(text);
   len += strlen(PDF_TEXT_END);
   sprintf(str2, PDF_STREAM_OBJ_START, PDF_CurrObject, len);
-  fwrite(str2, 1, strlen(str2), fd);
-  len = PDF_PrepareString(str, str, PDF_CurrObject, true);
-  fwrite(str, 1, strlen(str), fd);
-  len = PDF_PrepareString(text, str, PDF_CurrObject, false);
-  fwrite(str, 1, len, fd);
-  len = PDF_PrepareString((char*)PDF_TEXT_END, str, PDF_CurrObject, false);
-  fwrite(str, 1, len, fd);
-  fwrite(PDF_STREAM_OBJ_END, 1, strlen(PDF_STREAM_OBJ_END), fd);
+  if (!PDF_WR_fwrite(fd, str2, strlen(str2)))
+    return PDF_ERR_FILE;
+  len = PDF_PrepareString(str, str, false, PDF_CurrObject, true);
+  if (!PDF_WR_fwrite(fd, str, len))
+    return PDF_ERR_FILE;
+  len = PDF_PrepareString(text, str, false, PDF_CurrObject, false);
+  if (!PDF_WR_fwrite(fd, str, len))
+    return PDF_ERR_FILE;
+  len = PDF_PrepareString((char*)PDF_TEXT_END, str, false, PDF_CurrObject, false);
+  if (!PDF_WR_fwrite(fd, str, len))
+    return PDF_ERR_FILE;
+  if (!PDF_WR_fwrite(fd, PDF_STREAM_OBJ_END, strlen(PDF_STREAM_OBJ_END)))
+    return PDF_ERR_FILE;
   PDF_CurrObject++;
 
   return PDF_ERR_NONE;
@@ -974,8 +724,7 @@ uint8_t PDF_AddText(FILE *fd, uint16_t x, uint16_t y, char *text)
 
 /** \brief Finish PDF generation, close handlers, save tables and write end of the file
  *
- * \param
- * \param
+ * \param [in] fd File descriptor
  * \return
  *
  */
@@ -986,31 +735,37 @@ uint8_t PDF_Finish(FILE *fd)
   uint32_t len;
   uint32_t pos;
 
-  /**< write last page if it's not stored */
+  /**< write last page if it's not stored yet */
   if (PDF_CurrObject>PDF_LastObject)
     PDF_WritePage(fd);
   /**< write pages list */
-  PDF_XrefTable[PDF_OBJNUM_PAGES] = ftell(fd);
+  PDF_XrefTable[PDF_OBJNUM_PAGES] = PDF_WR_ftell(fd);
   sprintf(str, PDF_PAGES_OBJ_START, PDF_PageNum);
-  fwrite(str, 1, strlen(str), fd);
+  if (!PDF_WR_fwrite(fd, str, strlen(str)))
+    return PDF_ERR_FILE;
   for (len=PDF_OBJNUM_LAST; len<=PDF_CurrObject; len++)
   {
     if (PDF_XrefTable[len] & PDF_BIT_PAGE)
     {
       PDF_XrefTable[len] &= ~PDF_BIT_PAGE;
       sprintf(str, PDF_CONT_FMT, len);
-      fwrite(str, 1, strlen(str), fd);
+      if (!PDF_WR_fwrite(fd, str, strlen(str)))
+        return PDF_ERR_FILE;
     }
   }
-  fwrite(PDF_PAGES_OBJ_END, 1, strlen(PDF_PAGES_OBJ_END), fd);
+  if (!PDF_WR_fwrite(fd, PDF_PAGES_OBJ_END, strlen(PDF_PAGES_OBJ_END)))
+    return PDF_ERR_FILE;
   /**< write xref table */
-  //fwrite(PDF_ENDLINE, 1, strlen(PDF_ENDLINE), fd);
+  //if (!PDF_WR_fwrite(fd, PDF_ENDLINE, 1, strlen(PDF_ENDLINE)))
+  //  return PDF_ERR_FILE;
   //get XREF position
-  pos = ftell(fd);
+  pos = PDF_WR_ftell(fd);
   sprintf(str, PDF_XREF_START, PDF_CurrObject);
-  fwrite(str, 1, strlen(str), fd);
+  if (!PDF_WR_fwrite(fd, str, strlen(str)))
+    return PDF_ERR_FILE;
   //write first record
-  fwrite(PDF_XREF_FIRST, 1, strlen(PDF_XREF_FIRST), fd);
+  if (!PDF_WR_fwrite(fd, PDF_XREF_FIRST, strlen(PDF_XREF_FIRST)))
+    return PDF_ERR_FILE;
   //write all xref records from array
   PDF_XrefPos = 0;
   for (len=PDF_OBJNUM_ROOT; len<PDF_CurrObject; len++)
@@ -1029,30 +784,39 @@ uint8_t PDF_Finish(FILE *fd)
     {
       sprintf(str, PDF_XREF_RECORD, 0, 'f');
     }
-    fwrite(str, 1, strlen(str), fd);
+    if (!PDF_WR_fwrite(fd, str, strlen(str)))
+      return PDF_ERR_FILE;
   }
   /**< write trailer */
   sprintf(str, PDF_TRAILER_START, PDF_CurrObject);
-  fwrite(str, 1, strlen(str), fd);
+  if (!PDF_WR_fwrite(fd, str, strlen(str)))
+    return PDF_ERR_FILE;
   #ifdef PDF_USE_ENCRYPT
-    fwrite(PDF_TRAILER_ENC, 1, strlen(PDF_TRAILER_ENC), fd);
+    if (!PDF_WR_fwrite(fd, PDF_TRAILER_ENC, strlen(PDF_TRAILER_ENC)))
+      return PDF_ERR_FILE;
   #endif // PDF_USE_ENCRYPT
-  fwrite(PDF_TRAILER_MID, 1, strlen(PDF_TRAILER_MID), fd);
+  if (!PDF_WR_fwrite(fd, PDF_TRAILER_MID, strlen(PDF_TRAILER_MID)))
+    return PDF_ERR_FILE;
   strcpy(str2, "<");
   for (len=0; len<PDF_ID_LEN; len++)
     strcat(str2, PDF_ByteToHex(PDF_EncryptRec.encrypt_id[len]));
   strcat(str2, ">");
-  fwrite(str2, 1, strlen(str2), fd); /* print ID twice! */
-  fwrite(str2, 1, strlen(str2), fd);
-  fwrite(PDF_TRAILER_END, 1, strlen(PDF_TRAILER_END), fd);
+  if (!PDF_WR_fwrite(fd, str2, strlen(str2))) /* print ID twice! */
+    return PDF_ERR_FILE;
+  if (!PDF_WR_fwrite(fd, str2, strlen(str2)))
+    return PDF_ERR_FILE;
+  if (!PDF_WR_fwrite(fd, PDF_TRAILER_END, strlen(PDF_TRAILER_END)))
+    return PDF_ERR_FILE;
   /**< write xref start position */
   sprintf(str, PDF_XREF_END, pos);
-  fwrite(str, 1, strlen(str), fd);
+  if (!PDF_WR_fwrite(fd, str, strlen(str)))
+    return PDF_ERR_FILE;
   /**< write ending of the file */
-  fwrite(PDF_EOF, 1, strlen(PDF_EOF), fd);
+  if (!PDF_WR_fwrite(fd, PDF_EOF, strlen(PDF_EOF)))
+    return PDF_ERR_FILE;
 
   /**< close PDF file */
-  fclose(fd);
+  PDF_WR_fclose(fd);
 
   return PDF_ERR_NONE;
 }

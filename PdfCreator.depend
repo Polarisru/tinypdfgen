@@ -56,12 +56,12 @@
 	<string.h>
 	"utils.h"
 
-1508857975 source:e:\projects\tinypdfgen\main.c
+1508938745 source:e:\projects\tinypdfgen\main.c
 	<stdio.h>
 	<stdlib.h>
 	"pdf.h"
 
-1508857898 e:\projects\tinypdfgen\pdf\pdf.h
+1508940153 e:\projects\tinypdfgen\pdf\pdf.h
 	<stdint.h>
 	<stdbool.h>
 	<stdio.h>
@@ -81,15 +81,15 @@
 	<string.h>
 	"md5.h"
 
-1508858804 source:e:\projects\tinypdfgen\pdf\pdf.c
+1508939333 source:e:\projects\tinypdfgen\pdf\pdf.c
 	<stdio.h>
 	<string.h>
 	"arc4.h"
-	"pdf_font.h"
 	"md5.h"
 	"pdf.h"
 	"pdf_conf.h"
 	"pdf_const.h"
+	"pdf_font.h"
 	"pdf_wrapper.h"
 
 1508834208 e:\projects\tinypdfgen\pdf\pdf_font.h
@@ -113,16 +113,17 @@
 	<string.h>
 	"utils.h"
 
-1508856742 source:e:\projects\tinypdfgen\pdf\pdf_const.c
+1508939533 source:e:\projects\tinypdfgen\pdf\pdf_const.c
 	"pdf_const.h"
 
-1508856723 e:\projects\tinypdfgen\pdf\pdf_const.h
+1508914934 e:\projects\tinypdfgen\pdf\pdf_const.h
 	<stdint.h>
 
-1508859039 e:\projects\tinypdfgen\pdf\pdf_conf.h
+1508933729 e:\projects\tinypdfgen\pdf\pdf_conf.h
 
-1508850358 e:\projects\tinypdfgen\pdf\pdf_wrapper.h
-	<stdlib.h>
+1508921404 e:\projects\tinypdfgen\pdf\pdf_wrapper.h
+	<stdint.h>
+	<stdbool.h>
 
 1508874282 source:e:\projects\pdfcreator\pdf\pdf_const.c
 	"pdf_const.h"
@@ -135,4 +136,10 @@
 1508881574 e:\projects\pdfcreator\pdf\pdf_wrapper.h
 	<stdlib.h>
 	<time.h>
+
+1508921404 source:e:\projects\tinypdfgen\pdf\pdf_wrapper.c
+	<stdio.h>
+	<stdlib.h>
+	<time.h>
+	"pdf_wrapper.h"
 
