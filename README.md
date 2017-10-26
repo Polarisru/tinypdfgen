@@ -9,18 +9,16 @@
 
 int main()
 {
-  FILE *fd = NULL;
-
-  fd = PDF_Start("e:\\test.pdf", "PDF Title", "PDF Author");
-  if (fd!=NULL)
+  fd = ;
+  if (PDF_Start("e:\\test.pdf", "PDF Title", "PDF Author") == PDF_ERR_NONE)
   {
-    PDF_AddPage(fd);
-    PDF_AddText(fd, 300, 20, "Test PDF");
-    PDF_AddText(fd, 100, 50, "Test 1");
-    PDF_AddText(fd, 100, 80, "Test 2");
-    PDF_AddPage(fd);
-    PDF_AddText(fd, 300, 20, "Test PDF 2");
-    PDF_Finish(fd);
+    PDF_AddPage(false);
+    PDF_AddText(300, 20, "Test PDF");
+    PDF_AddText(100, 50, "Test 1");
+    PDF_AddText(100, 80, "Test 2");
+    PDF_AddPage(false);
+    PDF_AddText(300, 20, "Test PDF 2");
+    PDF_Finish();
   } else
   {
     printf("Error opening file!\n");
@@ -37,3 +35,4 @@ int main()
 - [ ] add headers/footers
 - [ ] write documentation
 - [ ] write FatFS wrapper
+- [ ] add possibility to use images

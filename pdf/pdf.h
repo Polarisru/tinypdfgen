@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include "arc4.h"
 #include "md5.h"
+#include "pdf_wrapper.h"
 
 #define PDF_ID_LEN              16
 #define PDF_PASSWD_LEN          32
@@ -21,11 +22,6 @@
 #define PDF_ENCRYPT_R2          2
 #define PDF_ENCRYPT_R3          3
 
-#define PDF_LINES_NUMBER        45
-#define PDF_TEXT_XOFFS          50
-#define PDF_TEXT_YOFFS          705
-#define PDF_TEXT_HEIGHT         15
-#define PDF_TEXT_TOPY           21
 #define PDF_PAGE_HEIGHT         842
 
 #define PDF_BIT_PAGE            0x8000
@@ -33,8 +29,11 @@
 
 #define PDF_ERR_NONE            0
 #define PDF_ERR_FILE            1
-#define PDF_ERR_LONGBLOCK       2
-#define PDF_ERR_MAXNUM          3
+#define PDF_ERR_BUSY            2
+#define PDF_ERR_LONGBLOCK       3
+#define PDF_ERR_MAXNUM          4
+#define PDF_ERR_HEADER          5
+#define PDF_ERR_NOTSTARTED      6
 
 enum PDF_OBJNUMS
 {
@@ -87,10 +86,11 @@ typedef struct
   char *Text;
 } TPdfText;
 
-extern FILE* PDF_Start(char *name, char *title, char *author);
-extern uint8_t PDF_Write(FILE *fdst, uint8_t type, void *data);
-extern uint8_t PDF_AddPage(FILE *fd);
-extern uint8_t PDF_AddText(FILE *fd, uint16_t x, uint16_t y, char *text);
-extern uint8_t PDF_Finish(FILE *fd);
+extern uint8_t PDF_Start(char *name, char *title, char *author);
+extern uint8_t PDF_AddPage(bool has_header);
+extern uint8_t PDF_AddText(uint16_t x, uint16_t y, char *text);
+extern uint8_t PDF_AddHeader(uint16_t x, uint16_t y, char *text);
+extern uint8_t PDF_Finish(void);
+extern void PDF_Abort(void);
 
 #endif

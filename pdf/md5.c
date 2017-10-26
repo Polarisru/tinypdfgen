@@ -1,12 +1,15 @@
 #include <string.h>
 #include "md5.h"
 
-//------------------------------------------------------------------------------
-// MD5_Transform - 
-// The core of the MD5 algorithm, this alters an existing MD5 hash to
-// reflect the addition of 16 longwords of new data.  MD5Update blocks
-// the data and converts bytes into longwords for this routine.
-//------------------------------------------------------------------------------ 
+/** \brief
+ * The core of the MD5 algorithm, this alters an existing MD5 hash to
+ * reflect the addition of 16 longwords of new data.  MD5Update blocks
+ * the data and converts bytes into longwords for this routine.
+ * \param [in] buf
+ * \param [in] in
+ * \return
+ *
+ */
 static void MD5_Transform(uint32_t buf[4], uint32_t in[16])
 {
   register uint32_t a, b, c, d;
@@ -90,13 +93,17 @@ static void MD5_Transform(uint32_t buf[4], uint32_t in[16])
   buf[3] += d;
 }
 
-//------------------------------------------------------------------------------
-// MD5_ByteReverse - 
-//------------------------------------------------------------------------------
+/** \brief
+ *
+ * \param [in] buf
+ * \param [in] longs
+ * \return
+ *
+ */
 static void MD5_ByteReverse(uint8_t *buf, uint32_t longs)
 {
   uint32_t t;
-  
+
   do
   {
     t = (uint32_t) ((uint32_t) buf[3] << 8 | buf[2]) << 16 | ((uint32_t) buf[1] << 8 | buf[0]);
@@ -105,9 +112,13 @@ static void MD5_ByteReverse(uint8_t *buf, uint32_t longs)
   } while (--longs);
 }
 
-//------------------------------------------------------------------------------
-// MD5_Init - 
-//------------------------------------------------------------------------------
+/** \brief
+ *
+ * \param
+ * \param
+ * \return
+ *
+ */
 void MD5_Init(TMD5Context *ctx)
 {
   ctx->buf[0] = 0x67452301;
@@ -119,9 +130,14 @@ void MD5_Init(TMD5Context *ctx)
   ctx->bits[1] = 0;
 }
 
-//------------------------------------------------------------------------------
-// MD5_Update - 
-//------------------------------------------------------------------------------
+/** \brief
+ *
+ * \param ctx TMD5Context*
+ * \param buf uint8_t*
+ * \param len uint32_t
+ * \return void
+ *
+ */
 void MD5_Update(TMD5Context *ctx, uint8_t *buf, uint32_t len)
 {
   uint32_t t;
@@ -135,7 +151,7 @@ void MD5_Update(TMD5Context *ctx, uint8_t *buf, uint32_t len)
   t = (t >> 3) & 0x3f; // Bytes already in shsInfo->data
 
   // Handle any leading odd-sized chunks
-  if (t) 
+  if (t)
 	{
     uint8_t *p = (uint8_t *) ctx->in + t;
 
@@ -152,7 +168,7 @@ void MD5_Update(TMD5Context *ctx, uint8_t *buf, uint32_t len)
     len -= t;
   }
     // Process data in 64-byte chunks
-  while (len >= 64) 
+  while (len >= 64)
   {
     memcpy(ctx->in, buf, 64);
     MD5_ByteReverse(ctx->in, 16);
@@ -161,14 +177,18 @@ void MD5_Update(TMD5Context *ctx, uint8_t *buf, uint32_t len)
     len -= 64;
   }
 
-  // Handle any remaining bytes of data
+  /* Handle any remaining bytes of data */
   memcpy(ctx->in, buf, len);
 }
 
-//------------------------------------------------------------------------------
-// MD5_Final - Final wrapup - pad to 64-byte boundary with the bit pattern 
-// 1 0* (64-bit count of bits processed, MSB-first)
-//------------------------------------------------------------------------------
+/** \brief
+ * MD5_Final - Final wrapup - pad to 64-byte boundary with the bit pattern
+ * 1 0* (64-bit count of bits processed, MSB-first).
+ * \param
+ * \param
+ * \return
+ *
+ */
 void MD5_Final(uint8_t digest[16], TMD5Context *ctx)
 {
   uint32_t count;
@@ -185,7 +205,7 @@ void MD5_Final(uint8_t digest[16], TMD5Context *ctx)
   count = 64 - 1 - count;
 
   // Pad out to 56 mod 64
-  if (count < 8) 
+  if (count < 8)
 	{
     // Two lots of padding:  Pad the first block to 64 bytes
     memset(p, 0, count);
@@ -194,7 +214,7 @@ void MD5_Final(uint8_t digest[16], TMD5Context *ctx)
 
     // Now fill the next block with 56 bytes
     memset(ctx->in, 0, 56);
-  } else 
+  } else
 	{
     // Pad block to 56 bytes
     memset(p, 0, count - 8);

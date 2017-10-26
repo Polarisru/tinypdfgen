@@ -4,11 +4,9 @@
 
 #include "pdf_wrapper.h"
 
-/** \brief
+/** \brief Ger random number
  *
- * \param
- * \param
- * \return
+ * \return Random number
  *
  */
 uint32_t PDF_WR_rand(void)
@@ -16,10 +14,8 @@ uint32_t PDF_WR_rand(void)
   return rand();
 }
 
-/** \brief
+/** \brief Initialize random number generator
  *
- * \param
- * \param
  * \return
  *
  */
@@ -28,14 +24,15 @@ void PDF_WR_srand(void)
   srand(time(0));
 }
 
-/** \brief
+/** \brief Open file by name
  *
+ * \param [in] name Name of the file
  * \return void
  *
  */
-void PDF_WR_fopen()
+hFile PDF_WR_fopen(char *name)
 {
-
+  return fopen(name, "wb");
 }
 
 /** \brief
@@ -45,7 +42,7 @@ void PDF_WR_fopen()
  * \return
  *
  */
-bool PDF_WR_fwrite(FILE* fd, const void* buf, uint16_t len)
+bool PDF_WR_fwrite(hFile fd, const void* buf, uint16_t len)
 {
   uint32_t bw;
 
@@ -54,14 +51,13 @@ bool PDF_WR_fwrite(FILE* fd, const void* buf, uint16_t len)
   return (bw==len);
 }
 
-/** \brief
+/** \brief Read current position of the file
  *
- * \param
- * \param
- * \return
+ * \param [in] fd File handler
+ * \return Current position in the file
  *
  */
-uint32_t PDF_WR_ftell(FILE* fd)
+uint32_t PDF_WR_ftell(hFile fd)
 {
   return ftell(fd);
 }
@@ -72,7 +68,7 @@ uint32_t PDF_WR_ftell(FILE* fd)
  * \return
  *
  */
-void PDF_WR_fclose(FILE* fd)
+void PDF_WR_fclose(hFile fd)
 {
   fclose(fd);
 }

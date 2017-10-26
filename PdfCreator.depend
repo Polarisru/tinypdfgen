@@ -1,23 +1,23 @@
 # depslib dependency file v1.0
-1508871079 source:e:\projects\pdfcreator\main.c
+1509054977 source:e:\projects\pdfcreator\main.c
 	<stdio.h>
 	<stdlib.h>
 	"pdf.h"
 
-1484221264 source:e:\projects\pdfcreator\pdf\arc4.c
+1508954117 source:e:\projects\pdfcreator\pdf\arc4.c
 	"arc4.h"
 
-1508674910 e:\projects\pdfcreator\pdf\arc4.h
+1508954139 e:\projects\pdfcreator\pdf\arc4.h
 	<stdint.h>
 
-1473953914 source:e:\projects\pdfcreator\pdf\md5.c
+1508956024 source:e:\projects\pdfcreator\pdf\md5.c
 	<string.h>
 	"md5.h"
 
 1508674924 e:\projects\pdfcreator\pdf\md5.h
 	<stdint.h>
 
-1508880701 source:e:\projects\pdfcreator\pdf\pdf.c
+1508958935 source:e:\projects\pdfcreator\pdf\pdf.c
 	<stdio.h>
 	<string.h>
 	"arc4.h"
@@ -31,12 +31,13 @@
 1508675302 e:\projects\pdfcreator\pdf\pdf_font.h
 	<stdint.h>
 
-1508871079 e:\projects\pdfcreator\pdf\pdf.h
+1509055042 e:\projects\pdfcreator\pdf\pdf.h
 	<stdint.h>
 	<stdbool.h>
 	<stdio.h>
 	"arc4.h"
 	"md5.h"
+	"pdf_wrapper.h"
 
 1508707750 e:\projects\pdfcreator\pdf\str_pdf.h
 	<stdint.h>
@@ -125,19 +126,25 @@
 	<stdint.h>
 	<stdbool.h>
 
-1508874282 source:e:\projects\pdfcreator\pdf\pdf_const.c
+1508957818 source:e:\projects\pdfcreator\pdf\pdf_const.c
 	"pdf_const.h"
 
 1508874337 e:\projects\pdfcreator\pdf\pdf_const.h
 	<stdint.h>
 
-1508874282 e:\projects\pdfcreator\pdf\pdf_conf.h
+1508953838 e:\projects\pdfcreator\pdf\pdf_conf.h
 
-1508881574 e:\projects\pdfcreator\pdf\pdf_wrapper.h
-	<stdlib.h>
-	<time.h>
+1508954878 e:\projects\pdfcreator\pdf\pdf_wrapper.h
+	<stdint.h>
+	<stdbool.h>
 
 1508921404 source:e:\projects\tinypdfgen\pdf\pdf_wrapper.c
+	<stdio.h>
+	<stdlib.h>
+	<time.h>
+	"pdf_wrapper.h"
+
+1508955061 source:e:\projects\pdfcreator\pdf\pdf_wrapper.c
 	<stdio.h>
 	<stdlib.h>
 	<time.h>

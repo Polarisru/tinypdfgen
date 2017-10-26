@@ -49,10 +49,6 @@
 		</Unit>
 		<Unit filename="pdf/pdf.h" />
 		<Unit filename="pdf/pdf_conf.h" />
-		<Unit filename="pdf/pdf_const.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="pdf/pdf_const.h" />
 		<Unit filename="pdf/pdf_font.c">
 			<Option compilerVar="CC" />
 		</Unit>

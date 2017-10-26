@@ -1,8 +1,13 @@
 #include "arc4.h"
 
-//------------------------------------------------------------------------------
-// ARC4_Init - initialize ARC4 encryption
-//------------------------------------------------------------------------------
+/** \brief Initialize ARC4 encryption
+ *
+ * \param [out] ctx ARC4 encryption context
+ * \param [in] key Encryption key
+ * \param [in] key_len Length of the encryption key
+ * \return
+ *
+ */
 void ARC4_Init(ARC4_Ctx_Rec *ctx, uint8_t *key, uint8_t key_len)
 {
   uint8_t tmp_array[ARC4_BUF_SIZE];
@@ -16,7 +21,7 @@ void ARC4_Init(ARC4_Ctx_Rec *ctx, uint8_t *key, uint8_t key_len)
   for (i = 0; i < ARC4_BUF_SIZE; i++)
     tmp_array[i] = key[i % key_len];
 
-  for (i = 0; i < ARC4_BUF_SIZE; i++) 
+  for (i = 0; i < ARC4_BUF_SIZE; i++)
   {
     j = (j + ctx->state[i] + tmp_array[i]) % ARC4_BUF_SIZE;
 
@@ -29,9 +34,15 @@ void ARC4_Init(ARC4_Ctx_Rec *ctx, uint8_t *key, uint8_t key_len)
   ctx->idx2 = 0;
 }
 
-//------------------------------------------------------------------------------
-// ARC4_CryptBuf - encrypt data buffer
-//------------------------------------------------------------------------------
+/** \brief Encrypt data buffer
+ *
+ * \param [in] ctx ARC4 encryption context
+ * \param [in] in Input data buffer
+ * \param [out] out Output data buffer
+ * \param [in] len Data buffer length
+ * \return
+ *
+ */
 void ARC4_CryptBuf(ARC4_Ctx_Rec *ctx, uint8_t *in, uint8_t *out, uint16_t len)
 {
   uint32_t i;
@@ -39,7 +50,7 @@ void ARC4_CryptBuf(ARC4_Ctx_Rec *ctx, uint8_t *in, uint8_t *out, uint16_t len)
   uint8_t K;
   uint8_t tmp;
 
-  for (i = 0; i < len; i++) 
+  for (i = 0; i < len; i++)
 	{
     ctx->idx1 = (uint8_t)((ctx->idx1 + 1) % 256);
     ctx->idx2 = (uint8_t)((ctx->idx2 +  ctx->state[ctx->idx1]) % 256);
