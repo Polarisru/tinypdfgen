@@ -30,9 +30,10 @@ int main()
 ```
 
 ## TinyPDFGen Roadmap
-- add PDF_ENCRYPT_R3 support
-- add possibility to use different not embedded fonts
-- add embedded font
-- add headers/footers
-- write documentation
-- write FatFS wrapper
+- [x] generate simple multipage document with/without encryption
+- [x] add PDF_ENCRYPT_R3 support
+- [ ] add possibility to use different not embedded fonts
+- [ ] add embedded font
+- [ ] add headers/footers
+- [ ] write documentation
+- [ ] write FatFS wrapper
