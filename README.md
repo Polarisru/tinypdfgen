@@ -30,9 +30,11 @@ int main()
 ## TinyPDFGen Roadmap
 - [x] generate simple multipage document with/without encryption
 - [x] add PDF_ENCRYPT_R3 support
+- [x] add headers/footers
+- [ ] different text colors
+- [ ] add graphical objects (streams with no text formatting)
 - [ ] add possibility to use different not embedded fonts
 - [ ] add embedded font
-- [ ] add headers/footers
 - [ ] write documentation
 - [ ] write FatFS wrapper
 - [ ] add possibility to use images

@@ -80,11 +80,15 @@ void PDF_WR_fclose(hFile fd)
  * \return
  *
  */
-void PDF_WR_gettime()
+void PDF_WR_gettime(PdfTime *dt)
 {
-  time_t now;
-  struct tm *ptr;
+  time_t t = time(NULL);
+  struct tm tm = *localtime(&t);
 
-  time(&now);
-  ptr = localtime(&now);
+  dt->year = tm.tm_year + 1900;
+  dt->month = tm.tm_mon + 1;
+  dt->day = tm.tm_mday;
+  dt->hour = tm.tm_hour;
+  dt->min = tm.tm_min;
+  dt->sec = tm.tm_sec;
 }

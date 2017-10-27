@@ -15,7 +15,8 @@ const char PDF_FIRST_OBJECT[] = "1 0 obj\n<< /Type /Catalog /Pages 2 0 R>>\nendo
 const char PDF_PAGES_OBJ_START[] = "2 0 obj\n<< /Type /Pages /Count %d /Kids [";
 const char PDF_PAGES_OBJ_END[] = "] /MediaBox [0 0 595 842]>>\nendobj\n";
 //const char PDF_RESOURCE_OBJECT[] = "3 0 obj\n<</Font <</F1 4 0 R /F2 5 0 R>>>>\nendobj\n";
-const char PDF_RESOURCE_OBJECT[] = "3 0 obj\n<</Font <</F1 4 0 R>>>>\nendobj\n";
+//const char PDF_RESOURCE_OBJECT[] = "3 0 obj\n<</Font <</F1 4 0 R>>>>\nendobj\n";
+const char PDF_RESOURCE_OBJECT[] = "3 0 obj\n<</ProcSet [/PDF /Text /ImageB /ImageC /ImageI] /Font <</F1 4 0 R>> /XObject <</Im1 11 0 R>>>>\nendobj\n";
 const char PDF_FONT1_OBJECT[] = "4 0 obj\n<</Type /Font /Subtype /Type1 /BaseFont /Courier>>\nendobj\n";
 const char PDF_FONT2_OBJECT[] = "5 0 obj\n<</Type /Font /Subtype /Type1 /BaseFont /Courier-Bold>>\nendobj\n";
 
@@ -57,8 +58,6 @@ const char PDF_XREF_END[] = "startxref\n%d\n";
 const char PDF_CONT_FMT[] = "%d 0 R ";
 const char PDF_DATE_FMT[] = "%4d%02d%02d%02d%02d%02dZ";
 
-const char PDF_ENDLINE[] = "\n";
-
 const uint8_t PDF_DUMMY_ID[] = {0xc5, 0x27, 0x49, 0x0a, 0x70, 0x6a, 0x90, 0x91, 0x07, 0xa9, 0xce, 0xee, 0xdf, 0x94, 0x97, 0xb3};
 
 const uint8_t PDF_PADDING_STRING[] = {
@@ -67,6 +66,11 @@ const uint8_t PDF_PADDING_STRING[] = {
     0x2E, 0x2E, 0x00, 0xB6, 0xD0, 0x68, 0x3E, 0x80,
     0x2F, 0x0C, 0xA9, 0xFE, 0x64, 0x53, 0x69, 0x7A
 };
+
+const uint8_t PDF_TEST_IMAGE[] = {0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF,
+                                  0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF};
+const char PDF_IMAGE_HEADER[] = "11 0 obj\n<</Type /XObject /Subtype /Image /Width 4 /Height 4 /BitsPerComponent 24 /Length 48>>\nstream\n";
+const char PDF_IMAGE_INSERT[] = "q 93.54 0 0 42.19 28.35 777.03 cm /Im1 Do Q\n";
 
 // --- PDF objects structure ---
 //object 1 - root
@@ -381,12 +385,14 @@ void PDF_Encrypt_InitKey(TPDFEncryptRec *attr, uint32_t object_id, uint16_t gen_
  * \return
  *
  */
+#ifdef PDF_USE_ENCRYPT
 void PDF_Encrypt_Reset(TPDFEncryptRec *attr)
 {
   uint8_t key_len = (attr->key_len + 5 > PDF_ENCRYPT_KEY_MAX) ? PDF_ENCRYPT_KEY_MAX : attr->key_len + 5;
 
   ARC4_Init(&attr->arc4ctx, attr->md5_encryption_key, key_len);
 }
+#endif // PDF_USE_ENCRYPT
 
 /** \brief Encrypt buffer with ARC4
  *
@@ -395,10 +401,12 @@ void PDF_Encrypt_Reset(TPDFEncryptRec *attr)
  * \return
  *
  */
+#ifdef PDF_USE_ENCRYPT
 void PDF_Encrypt_CryptBuf(TPDFEncryptRec *attr, uint8_t *src, uint8_t *dst, uint32_t len)
 {
   ARC4_CryptBuf(&attr->arc4ctx, src, dst, len);
 }
+#endif // PDF_USE_ENCRYPT
 
 //------------------------------------------------------------------------------
 // PDF_WriteObject - write objects to PDF file
@@ -581,6 +589,7 @@ uint8_t PDF_Start(char *name, char *title, char *author)
   char str[PDF_BLOCK_SIZE*2];
   uint16_t len;
   TMD5Context md5_ctx;
+  PdfTime dt;
 
   if (PDF_Handler != NULL)
     return PDF_ERR_BUSY;
@@ -667,11 +676,20 @@ uint8_t PDF_Start(char *name, char *title, char *author)
       break;
     if (!PDF_WR_fwrite(PDF_Handler, PDF_INFO_OBJ_4, strlen(PDF_INFO_OBJ_4)))
       break;
-    sprintf(str, PDF_DATE_FMT, 2017, 10, 22, 23, 7, 11);
+    PDF_WR_gettime(&dt);
+    sprintf(str, PDF_DATE_FMT, dt.year, dt.month, dt.day, dt.hour, dt.min, dt.sec);
     len = PDF_PrepareString(str, str, true, PDF_OBJNUM_INFO, true);
     if (!PDF_WR_fwrite(PDF_Handler, str, len))
       break;
     if (!PDF_WR_fwrite(PDF_Handler, PDF_INFO_OBJ_5, strlen(PDF_INFO_OBJ_5)))
+      break;
+
+    PDF_XrefTable[PDF_OBJNUM_IMAGE] = PDF_WR_ftell(PDF_Handler);
+    if (!PDF_WR_fwrite(PDF_Handler, PDF_IMAGE_HEADER, strlen(PDF_IMAGE_HEADER)))
+      break;
+    if (!PDF_WR_fwrite(PDF_Handler, PDF_TEST_IMAGE, sizeof(PDF_TEST_IMAGE)))
+      break;
+    if (!PDF_WR_fwrite(PDF_Handler, PDF_STREAM_OBJ_END, strlen(PDF_STREAM_OBJ_END)))
       break;
 
     return PDF_ERR_NONE;
@@ -843,6 +861,49 @@ uint8_t PDF_AddHeader(uint16_t x, uint16_t y, char *text)
   return PDF_ERR_NONE;
 }
 
+uint8_t PDF_AddStream(char *stream)
+{
+  char str[PDF_BLOCK_SIZE*2];
+  char str2[PDF_BLOCK_SIZE*2];
+  uint16_t len;
+  uint16_t size;
+  uint16_t i;
+  uint32_t pos = PDF_WR_ftell(PDF_Handler);
+
+  if (PDF_Handler == NULL)
+    return PDF_ERR_NOTSTARTED;
+
+  if (PDF_CurrObject >= PDF_MAX_NUM)
+    return PDF_ERR_MAXNUM;
+
+  if ((pos - PDF_XrefPos) > PDF_MAX_BLOCKLEN)
+    return PDF_ERR_LONGBLOCK;
+
+  size = strlen(stream);
+  PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos);
+  PDF_XrefPos = pos;
+  /* write stream header */
+  sprintf(str, PDF_STREAM_OBJ_START, PDF_CurrObject, size);
+  if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
+    return PDF_ERR_FILE;
+  /* write stream content */
+  i = 0;
+  while (i < size)
+  {
+    strncpy(str2, &stream[i], PDF_BLOCK_SIZE);
+    i += PDF_BLOCK_SIZE;
+    len = PDF_PrepareString(str2, str, false, PDF_CurrObject, false);
+    if (!PDF_WR_fwrite(PDF_Handler, str, len))
+      return PDF_ERR_FILE;
+  }
+  /* write end of stream */
+  if (!PDF_WR_fwrite(PDF_Handler, PDF_STREAM_OBJ_END, strlen(PDF_STREAM_OBJ_END)))
+    return PDF_ERR_FILE;
+  PDF_CurrObject++;
+
+  return PDF_ERR_NONE;
+}
+
 /** \brief Finish PDF generation, close handlers, save tables and write end of the file
  *
  * \param [in] fd File descriptor
@@ -880,8 +941,6 @@ uint8_t PDF_Finish(void)
   if (!PDF_WR_fwrite(PDF_Handler, PDF_PAGES_OBJ_END, strlen(PDF_PAGES_OBJ_END)))
     return PDF_ERR_FILE;
   /**< write xref table */
-  //if (!PDF_WR_fwrite(PDF_Handler, PDF_ENDLINE, 1, strlen(PDF_ENDLINE)))
-  //  return PDF_ERR_FILE;
   //get XREF position
   pos = PDF_WR_ftell(PDF_Handler);
   sprintf(str, PDF_XREF_START, PDF_CurrObject);

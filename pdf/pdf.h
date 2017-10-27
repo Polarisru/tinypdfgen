@@ -45,10 +45,10 @@ enum PDF_OBJNUMS
   PDF_OBJNUM_FONT2,
   PDF_OBJNUM_ENC,
   PDF_OBJNUM_INFO,
-  PDF_OBJNUM_HEADER,
   PDF_OBJNUM_FONTDESCR,
   PDF_OBJNUM_FONTWIDTHS,
   PDF_OBJNUM_EMBFONT,
+  PDF_OBJNUM_IMAGE,
   PDF_OBJNUM_LAST
 };
 
@@ -86,10 +86,13 @@ typedef struct
   char *Text;
 } TPdfText;
 
+extern const char PDF_IMAGE_INSERT[];
+
 extern uint8_t PDF_Start(char *name, char *title, char *author);
 extern uint8_t PDF_AddPage(bool has_header);
 extern uint8_t PDF_AddText(uint16_t x, uint16_t y, char *text);
 extern uint8_t PDF_AddHeader(uint16_t x, uint16_t y, char *text);
+extern uint8_t PDF_AddStream(char *stream);
 extern uint8_t PDF_Finish(void);
 extern void PDF_Abort(void);
 
