@@ -52,6 +52,23 @@ enum PDF_OBJNUMS
   PDF_OBJNUM_LAST
 };
 
+enum PDF_FONTS
+{
+  PDF_FONT_TIMES,
+  PDF_FONT_TIMES_BOLD,
+  PDF_FONT_TIMES_ITALIC,
+  PDF_FONT_TIMES_BOLDITALIC,
+  PDF_FONT_HELVETICA,
+  PDF_FONT_HELVETICA_BOLD,
+  PDF_FONT_HELVETICA_ITALIC,
+  PDF_FONT_HELVETICA_BOLDITALIC,
+  PDF_FONT_COURIER,
+  PDF_FONT_COURIER_BOLD,
+  PDF_FONT_COURIER_ITALIC,
+  PDF_FONT_COURIER_BOLDITALIC,
+  PDF_FONT_LAST
+};
+
 typedef struct
 {
   uint8_t   mode;
@@ -87,12 +104,15 @@ typedef struct
 } TPdfText;
 
 extern const char PDF_IMAGE_INSERT[];
+extern const char PDF_FRAME_STRING[];
 
 extern uint8_t PDF_Start(char *name, char *title, char *author);
 extern uint8_t PDF_AddPage(bool has_header);
-extern uint8_t PDF_AddText(uint16_t x, uint16_t y, char *text);
-extern uint8_t PDF_AddHeader(uint16_t x, uint16_t y, char *text);
 extern uint8_t PDF_AddStream(char *stream);
+extern uint8_t PDF_AddText(uint16_t x, uint16_t y, char *text);
+extern uint8_t PDF_AddTextToHeader(uint16_t x, uint16_t y, char *text);
+extern void PDF_SetFont(uint8_t font);
+extern uint8_t PDF_AddFrame(uint16_t x, uint16_t y, uint16_t width, uint16_t height);
 extern uint8_t PDF_Finish(void);
 extern void PDF_Abort(void);
 

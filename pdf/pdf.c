@@ -16,8 +16,8 @@ const char PDF_PAGES_OBJ_START[] = "2 0 obj\n<< /Type /Pages /Count %d /Kids [";
 const char PDF_PAGES_OBJ_END[] = "] /MediaBox [0 0 595 842]>>\nendobj\n";
 //const char PDF_RESOURCE_OBJECT[] = "3 0 obj\n<</Font <</F1 4 0 R /F2 5 0 R>>>>\nendobj\n";
 //const char PDF_RESOURCE_OBJECT[] = "3 0 obj\n<</Font <</F1 4 0 R>>>>\nendobj\n";
-const char PDF_RESOURCE_OBJECT[] = "3 0 obj\n<</ProcSet [/PDF /Text /ImageB /ImageC /ImageI] /Font <</F1 4 0 R>> /XObject <</Im1 11 0 R>>>>\nendobj\n";
-const char PDF_FONT1_OBJECT[] = "4 0 obj\n<</Type /Font /Subtype /Type1 /BaseFont /Courier>>\nendobj\n";
+const char PDF_RESOURCE_OBJECT[] = "3 0 obj\n<</Font <</F1 4 0 R>> /XObject <</Im1 11 0 R>>>>\nendobj\n";
+const char PDF_FONT1_OBJECT[] = "4 0 obj\n<</Type /Font /Subtype /Type1 /BaseFont /Times-Roman>>\nendobj\n";
 const char PDF_FONT2_OBJECT[] = "5 0 obj\n<</Type /Font /Subtype /Type1 /BaseFont /Courier-Bold>>\nendobj\n";
 
 //const char PDF_FONT1_DEF[] = "4 0 obj\n<</Type/Font/Subtype/TrueType/Name/F1/BaseFont/ABCDEE+Courier#20New#20Erweka/Encoding/WinAnsiEncoding/FontDescriptor 9 0 R/FirstChar 32/LastChar 255/Widths 10 0 R>>\nendobj\n";
@@ -44,7 +44,7 @@ const char PDF_TRAILER_MID[] = "/ID [";
 const char PDF_TRAILER_END[] = "] >>\n";
 const char PDF_TRAILER_ENC[] = "/Encrypt 6 0 R ";
 const char PDF_EOF[] = "%%EOF\n";
-const char PDF_TEXT_START[] = "BT /F1 %d Tf %d %d Td (";
+const char PDF_TEXT_START[] = "BT /F%d %d Tf %d %d Td (";
 const char PDF_TEXT_END[] = ") Tj ET\n";
 const char PDF_STREAM_OBJ_START[] = "%d 0 obj\n<< /Length %d >>\nstream\n";
 const char PDF_STREAM_FONTOBJ_START[] = "%d 0 obj\n<< /Length %d /Length1 %d /Length2 0 /Length3 0 >>\nstream\n";
@@ -69,8 +69,34 @@ const uint8_t PDF_PADDING_STRING[] = {
 
 const uint8_t PDF_TEST_IMAGE[] = {0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF,
                                   0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF};
-const char PDF_IMAGE_HEADER[] = "11 0 obj\n<</Type /XObject /Subtype /Image /Width 4 /Height 4 /BitsPerComponent 24 /Length 48>>\nstream\n";
-const char PDF_IMAGE_INSERT[] = "q 93.54 0 0 42.19 28.35 777.03 cm /Im1 Do Q\n";
+//"EEEEEEEEEEEEEEEE";
+const char PDF_IMAGE_HEADER[] = "11 0 obj\n<</Type /XObject /Subtype /Image /Name /Im1 /Width 4 /Height 4 /BitsPerComponent 8 /ColorSpace /DeviceRGB /Length 48>>\nstream\n";
+//"11 0 obj\n<</Type /XObject /Subtype /Image /Name /Im1 /Width 4 /Height 4 /BitsPerComponent 8 /ColorSpace /DeviceGray /Length 16>>\nstream\n";
+const char PDF_IMAGE_INSERT[] = "q 20 0 0 20 500 700 cm /Im1 Do Q\n"; //20 - width, 0, 0, 20 - height, 500 - x offset, 700 - y offset
+
+const char PDF_FONT_OBJ_START[] = "%d 0 obj\n<</Type /Font /Subtype /Type1 /BaseFont /";
+const char PDF_FONT_OBJ_END[] = "%s>>\nendobj\n";
+const char PDF_RESOURCE_START[] = "3 0 obj\n<</Font <<";
+const char PDF_RESOURCE_END[] = ">>>>\nendobj\n";
+const char PDF_FONT_FMT[] = "/F%d %d 0 R ";
+
+const char PDF_FRAME_STRING[] = "q 0.9 0.5 0.0 rg 50 725 515 90 re f Q 50 725 515 90 re S\n";
+
+const char* PDF_FONTS_NAMES[PDF_FONT_LAST] =
+{
+  "Times-Roman",
+  "Times-Bold",
+  "Times-Italic",
+  "Times-BoldItalic",
+  "Helvetica",
+  "Helvetica-Bold",
+  "Helvetica-Oblique",
+  "Helvetica-BoldOblique",
+  "Courier",
+  "Courier-Bold",
+  "Courier-Oblique",
+  "Courier-BoldOblique"
+};
 
 // --- PDF objects structure ---
 //object 1 - root
@@ -93,6 +119,9 @@ uint32_t PDF_LastObject;  //last saved PDF object
 uint32_t PDF_LastHeader;  //last PDF object marked as header
 bool PDF_HasHeader;       //marker for pages using header/footer
 uint32_t PDF_XrefPos;     //current Xref position
+uint8_t PDF_Font;         //current PDF font
+uint16_t PDF_UsedFonts;   //list of used fonts
+uint16_t PDF_FirstFontObject;   //first font object
 TPDFEncryptRec PDF_EncryptRec;  //structure for encrypting the document
 hFile PDF_Handler;
 
@@ -599,6 +628,8 @@ uint8_t PDF_Start(char *name, char *title, char *author)
   PDF_LastHeader = PDF_CurrObject;
   PDF_PageNum = 0;
   PDF_XrefPos = 0;
+  PDF_Font = PDF_FONT_TIMES;
+  PDF_UsedFonts = (1 << PDF_Font);
   for (i=PDF_OBJNUM_ZERO; i<=PDF_OBJNUM_LAST; i++)
   {
     /* reset Xref table */
@@ -632,14 +663,14 @@ uint8_t PDF_Start(char *name, char *title, char *author)
     /**< write root object */
     if (!PDF_WR_fwrite(PDF_Handler, PDF_FIRST_OBJECT, strlen(PDF_FIRST_OBJECT)))
       break;
-    PDF_XrefTable[PDF_OBJNUM_RESOURCES] = PDF_WR_ftell(PDF_Handler);
-    if (!PDF_WR_fwrite(PDF_Handler, PDF_RESOURCE_OBJECT, strlen(PDF_RESOURCE_OBJECT)))
-      break;
+    //PDF_XrefTable[PDF_OBJNUM_RESOURCES] = PDF_WR_ftell(PDF_Handler);
+    //if (!PDF_WR_fwrite(PDF_Handler, PDF_RESOURCE_OBJECT, strlen(PDF_RESOURCE_OBJECT)))
+    //  break;
     #ifdef PDF_USE_EMBFONT
     #else
-      PDF_XrefTable[PDF_OBJNUM_FONT1] = PDF_WR_ftell(PDF_Handler);
-      if (!PDF_WR_fwrite(PDF_Handler, PDF_FONT1_OBJECT, strlen(PDF_FONT1_OBJECT)))
-        break;
+      //PDF_XrefTable[PDF_OBJNUM_FONT1] = PDF_WR_ftell(PDF_Handler);
+      //if (!PDF_WR_fwrite(PDF_Handler, PDF_FONT1_OBJECT, strlen(PDF_FONT1_OBJECT)))
+      //  break;
     #endif // PDF_USE_EMBFONT
     #ifdef PDF_USE_ENCRYPT
       PDF_XrefTable[PDF_OBJNUM_ENC] = PDF_WR_ftell(PDF_Handler);
@@ -808,7 +839,7 @@ uint8_t PDF_AddText(uint16_t x, uint16_t y, char *text)
   size = strlen(text);
   PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos);
   PDF_XrefPos = pos;
-  sprintf(str, PDF_TEXT_START, 12, x, PDF_PAGE_HEIGHT - y);
+  sprintf(str, PDF_TEXT_START, PDF_Font + 1, 14, x, PDF_PAGE_HEIGHT - y);
   len = strlen(str);
   len += size;
   len += strlen(PDF_TEXT_END);
@@ -844,7 +875,7 @@ uint8_t PDF_AddText(uint16_t x, uint16_t y, char *text)
  * \return
  *
  */
-uint8_t PDF_AddHeader(uint16_t x, uint16_t y, char *text)
+uint8_t PDF_AddTextToHeader(uint16_t x, uint16_t y, char *text)
 {
   uint8_t res;
 
@@ -904,6 +935,15 @@ uint8_t PDF_AddStream(char *stream)
   return PDF_ERR_NONE;
 }
 
+void PDF_SetFont(uint8_t font)
+{
+  if (font > PDF_FONT_LAST)
+    return;
+
+  PDF_Font = font;
+  PDF_UsedFonts |= (1 << font);
+}
+
 /** \brief Finish PDF generation, close handlers, save tables and write end of the file
  *
  * \param [in] fd File descriptor
@@ -923,6 +963,36 @@ uint8_t PDF_Finish(void)
   /**< write last page if it's not stored yet */
   if (PDF_CurrObject > PDF_LastObject)
     PDF_WritePage();
+  /**< write list of the used fonts */
+  PDF_FirstFontObject = PDF_CurrObject;
+  for (len=PDF_FONT_TIMES; len<PDF_FONT_LAST; len++)
+  {
+    if (PDF_UsedFonts & (1 << len))
+    {
+      PDF_XrefTable[PDF_CurrObject] = PDF_WR_ftell(PDF_Handler);
+      sprintf(str, PDF_FONT_OBJ_START, PDF_CurrObject++);
+      if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
+        return PDF_ERR_FILE;
+      sprintf(str, PDF_FONT_OBJ_END, PDF_FONTS_NAMES[len]);
+      if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
+        return PDF_ERR_FILE;
+    }
+  }
+  /**< write resources object */
+  PDF_XrefTable[PDF_OBJNUM_RESOURCES] = PDF_WR_ftell(PDF_Handler);
+  if (!PDF_WR_fwrite(PDF_Handler, PDF_RESOURCE_START, strlen(PDF_RESOURCE_START)))
+    return PDF_ERR_FILE;
+  for (len=PDF_FONT_TIMES; len<PDF_FONT_LAST; len++)
+  {
+    if (PDF_UsedFonts & (1 << len))
+    {
+      sprintf(str, PDF_FONT_FMT, len + 1, PDF_FirstFontObject++);
+      if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
+        return PDF_ERR_FILE;
+    }
+  }
+  if (!PDF_WR_fwrite(PDF_Handler, PDF_RESOURCE_END, strlen(PDF_RESOURCE_END)))
+    return PDF_ERR_FILE;
   /**< write pages list */
   PDF_XrefTable[PDF_OBJNUM_PAGES] = PDF_WR_ftell(PDF_Handler);
   sprintf(str, PDF_PAGES_OBJ_START, PDF_PageNum);
