@@ -31,10 +31,11 @@ int main()
 - [x] generate simple multipage document with/without encryption
 - [x] add PDF_ENCRYPT_R3 support
 - [x] add headers/footers
-- [ ] different text colors
-- [ ] add graphical objects (streams with no text formatting)
-- [ ] add possibility to use different not embedded fonts
-- [ ] add embedded font
+- [x] different text colors
+- [x] add possibility to use different not embedded fonts
+- [x] add graphical objects: frames (streams with no text formatting)
+- [ ] add possibility to use images
 - [ ] write documentation
 - [ ] write FatFS wrapper
-- [ ] add possibility to use images
+### Not really usefull
+- [ ] add embedded font (because of big size - whole font should be stored)

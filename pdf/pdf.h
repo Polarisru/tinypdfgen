@@ -41,13 +41,8 @@ enum PDF_OBJNUMS
   PDF_OBJNUM_ROOT,
   PDF_OBJNUM_PAGES,
   PDF_OBJNUM_RESOURCES,
-  PDF_OBJNUM_FONT1,
-  PDF_OBJNUM_FONT2,
   PDF_OBJNUM_ENC,
   PDF_OBJNUM_INFO,
-  PDF_OBJNUM_FONTDESCR,
-  PDF_OBJNUM_FONTWIDTHS,
-  PDF_OBJNUM_EMBFONT,
   PDF_OBJNUM_IMAGE,
   PDF_OBJNUM_LAST
 };
@@ -109,10 +104,12 @@ extern const char PDF_FRAME_STRING[];
 extern uint8_t PDF_Start(char *name, char *title, char *author);
 extern uint8_t PDF_AddPage(bool has_header);
 extern uint8_t PDF_AddStream(char *stream);
-extern uint8_t PDF_AddText(uint16_t x, uint16_t y, char *text);
-extern uint8_t PDF_AddTextToHeader(uint16_t x, uint16_t y, char *text);
+extern uint8_t PDF_AddText(uint16_t x, uint16_t y, uint8_t f_size, char *text);
+extern uint8_t PDF_AddFrame(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint32_t color, bool fill);
+extern uint8_t PDF_AddTextToHeader(uint16_t x, uint16_t y, uint8_t f_size, char *text);
+extern uint8_t PDF_AddFrameToHeader(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint32_t color, bool fill);
 extern void PDF_SetFont(uint8_t font);
-extern uint8_t PDF_AddFrame(uint16_t x, uint16_t y, uint16_t width, uint16_t height);
+extern uint8_t PDF_SetColor(uint32_t color);
 extern uint8_t PDF_Finish(void);
 extern void PDF_Abort(void);
 

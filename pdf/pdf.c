@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "arc4.h"
-#include "md5.h"
+#ifdef PDF_USE_ENCRYPT
+  #include "arc4.h"
+  #include "md5.h"
+#endif
 #include "pdf.h"
 #include "pdf_conf.h"
 #ifdef PDF_USE_EMBFONT
@@ -14,35 +16,24 @@ const char PDF_HEADER[] = "%PDF-1.4\n%\xE2\xE3\xD2\xD3\n\n";
 const char PDF_FIRST_OBJECT[] = "1 0 obj\n<< /Type /Catalog /Pages 2 0 R>>\nendobj\n";
 const char PDF_PAGES_OBJ_START[] = "2 0 obj\n<< /Type /Pages /Count %d /Kids [";
 const char PDF_PAGES_OBJ_END[] = "] /MediaBox [0 0 595 842]>>\nendobj\n";
-//const char PDF_RESOURCE_OBJECT[] = "3 0 obj\n<</Font <</F1 4 0 R /F2 5 0 R>>>>\nendobj\n";
-//const char PDF_RESOURCE_OBJECT[] = "3 0 obj\n<</Font <</F1 4 0 R>>>>\nendobj\n";
-const char PDF_RESOURCE_OBJECT[] = "3 0 obj\n<</Font <</F1 4 0 R>> /XObject <</Im1 11 0 R>>>>\nendobj\n";
-const char PDF_FONT1_OBJECT[] = "4 0 obj\n<</Type /Font /Subtype /Type1 /BaseFont /Times-Roman>>\nendobj\n";
-const char PDF_FONT2_OBJECT[] = "5 0 obj\n<</Type /Font /Subtype /Type1 /BaseFont /Courier-Bold>>\nendobj\n";
-
-//const char PDF_FONT1_DEF[] = "4 0 obj\n<</Type/Font/Subtype/TrueType/Name/F1/BaseFont/ABCDEE+Courier#20New#20Erweka/Encoding/WinAnsiEncoding/FontDescriptor 9 0 R/FirstChar 32/LastChar 255/Widths 10 0 R>>\nendobj\n";
-const char PDF_FONT1_DEF[] = "4 0 obj\n<</Type /Font /Subtype /TrueType /BaseFont /BAAAAA+CourierErweka /Encoding /WinAnsiEncoding /FontDescriptor 9 0 R /FirstChar 32 /LastChar 255 /MissingWidth 600 /Widths 10 0 R>>\nendobj\n";
-//const char PDF_FONT1_DESC[] = "9 0 obj\n<</Type/FontDescriptor/FontName/ABCDEE+Courier#20New#20Erweka/Flags 32/ItalicAngle 0/Ascent 833/Descent -188/CapHeight 613/AvgWidth 600/MaxWidth 626/FontWeight 400/XHeight 250/StemV 60/FontBBox[ -13 -188 613 613]/FontFile2 11 0 R>>\nendobj\n";
-const char PDF_FONT1_DESC[] = "9 0 obj\n<</Type /FontDescriptor /Ascent 833 /Descent -188 /Flags 32 /FontBBox[ -13 -188 613 613] /FontName /BAAAAA+CourierErweka /ItalicAngle 0 /StemV 60 /XHeight 250 /FontFile2 11 0 R>>\nendobj\n";
-//const char PDF_FONT1_DESC[] = "9 0 obj\n<</Type/FontDescriptor/FontName/BAAAAA+CourierNewErweka/Flags 5/FontBBox[-13 -273 613 783]/ItalicAngle 0/Ascent 832/Descent -300/CapHeight 782/StemV 80/FontFile2 11 0 R>>\nendobj\n";
-const char PDF_FONT1_WIDTH_START[] = "10 0 obj\n[";
-const char PDF_FONT1_WIDTH_CONT[] = " 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600";
-const char PDF_FONT1_WIDTH_END[] = "]\nendobj\n";;
-
+const char PDF_RESOURCE_START[] = "3 0 obj\n<</Font <<";
+//const char PDF_RESOURCE_END[] = ">> /XObject <</Im1 6 0 R>>>>\nendobj\n";
+const char PDF_RESOURCE_END[] = ">>>>\nendobj\n";
 const char PDF_PAGE_OBJ_START[] = "%d 0 obj\n<< /Type /Page /Parent 2 0 R /Resources 3 0 R /Contents [";
 const char PDF_PAGE_OBJ_END[] = "]>>\nendobj\n";
-const char PDF_ENC_OBJ_START[] = "6 0 obj\n<</Filter /Standard /V 2 /R 3 /Length 40 /U(";
+const char PDF_ENC_OBJ_START[] = "4 0 obj\n<</Filter /Standard /V 2 /R 3 /Length 40 /U(";
 const char PDF_ENC_OBJ_MID[] = ") /O(";
 const char PDF_ENC_OBJ_END[] = ") /P %d>>\nendobj\n";
-const char PDF_INFO_OBJ_1[] = "7 0 obj\n<</Title (";
+const char PDF_INFO_OBJ_1[] = "5 0 obj\n<</Title (";
 const char PDF_INFO_OBJ_2[] = ") /Author (";
 const char PDF_INFO_OBJ_3[] = ") /Creator (";
 const char PDF_INFO_OBJ_4[] = ") /CreationDate (";
 const char PDF_INFO_OBJ_5[] = ")>>\nendobj\n";
-const char PDF_TRAILER_START[] = "trailer <</Size %d /Root 1 0 R /Info 7 0 R ";
-const char PDF_TRAILER_MID[] = "/ID [";
-const char PDF_TRAILER_END[] = "] >>\n";
-const char PDF_TRAILER_ENC[] = "/Encrypt 6 0 R ";
+const char PDF_TRAILER_START[] = "trailer <</Size %d /Root 1 0 R /Info 5 0 R ";
+//const char PDF_TRAILER_MID[] = "/ID [";
+const char PDF_TRAILER_ENC[] = "/Encrypt 4 0 R /ID [";
+const char PDF_TRAILER_END[] = ">>\n";
+const char PDF_TRAILER_ENC_END[] = "] >>\n";
 const char PDF_EOF[] = "%%EOF\n";
 const char PDF_TEXT_START[] = "BT /F%d %d Tf %d %d Td (";
 const char PDF_TEXT_END[] = ") Tj ET\n";
@@ -50,6 +41,8 @@ const char PDF_STREAM_OBJ_START[] = "%d 0 obj\n<< /Length %d >>\nstream\n";
 const char PDF_STREAM_FONTOBJ_START[] = "%d 0 obj\n<< /Length %d /Length1 %d /Length2 0 /Length3 0 >>\nstream\n";
 const char PDF_STREAM_OBJ_END[] = "endstream\nendobj\n";
 const char PDF_STREAM_OBJ_END2[] = "\nendstream\nendobj\n";
+const char PDF_FONT_OBJ_START[] = "%d 0 obj\n<</Type /Font /Subtype /Type1 /BaseFont /";
+const char PDF_FONT_OBJ_END[] = "%s>>\nendobj\n";
 
 const char PDF_XREF_START[] = "xref\n0 %d\n";
 const char PDF_XREF_FIRST[] = "0000000000 65535 f \n";
@@ -57,6 +50,9 @@ const char PDF_XREF_RECORD[] = "%010d 00000 %c \n";
 const char PDF_XREF_END[] = "startxref\n%d\n";
 const char PDF_CONT_FMT[] = "%d 0 R ";
 const char PDF_DATE_FMT[] = "%4d%02d%02d%02d%02d%02dZ";
+const char PDF_FONT_FMT[] = "/F%d %d 0 R ";
+const char PDF_SET_COLOR[] = "%.2f %.2f %.2f rg\n";
+const char PDF_FRAME_FMT[] = "q %.2f %.2f %.2f rg %d %d %d %d re %c Q\n";
 
 const uint8_t PDF_DUMMY_ID[] = {0xc5, 0x27, 0x49, 0x0a, 0x70, 0x6a, 0x90, 0x91, 0x07, 0xa9, 0xce, 0xee, 0xdf, 0x94, 0x97, 0xb3};
 
@@ -67,20 +63,12 @@ const uint8_t PDF_PADDING_STRING[] = {
     0x2F, 0x0C, 0xA9, 0xFE, 0x64, 0x53, 0x69, 0x7A
 };
 
-const uint8_t PDF_TEST_IMAGE[] = {0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF,
-                                  0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF};
+const uint8_t PDF_TEST_IMAGE[] = {0x80, 0x80, 0x80, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0x80, 0x80, 0x80, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF,
+                                  0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0x80, 0x80, 0x80, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0x80, 0x80, 0x80};
 //"EEEEEEEEEEEEEEEE";
-const char PDF_IMAGE_HEADER[] = "11 0 obj\n<</Type /XObject /Subtype /Image /Name /Im1 /Width 4 /Height 4 /BitsPerComponent 8 /ColorSpace /DeviceRGB /Length 48>>\nstream\n";
+const char PDF_IMAGE_HEADER[] = "6 0 obj\n<</Type /XObject /Subtype /Image /Name /Im1 /Width 4 /Height 4 /BitsPerComponent 8 /ColorSpace /DeviceRGB /Length 48>>\nstream\n";
 //"11 0 obj\n<</Type /XObject /Subtype /Image /Name /Im1 /Width 4 /Height 4 /BitsPerComponent 8 /ColorSpace /DeviceGray /Length 16>>\nstream\n";
 const char PDF_IMAGE_INSERT[] = "q 20 0 0 20 500 700 cm /Im1 Do Q\n"; //20 - width, 0, 0, 20 - height, 500 - x offset, 700 - y offset
-
-const char PDF_FONT_OBJ_START[] = "%d 0 obj\n<</Type /Font /Subtype /Type1 /BaseFont /";
-const char PDF_FONT_OBJ_END[] = "%s>>\nendobj\n";
-const char PDF_RESOURCE_START[] = "3 0 obj\n<</Font <<";
-const char PDF_RESOURCE_END[] = ">>>>\nendobj\n";
-const char PDF_FONT_FMT[] = "/F%d %d 0 R ";
-
-const char PDF_FRAME_STRING[] = "q 0.9 0.5 0.0 rg 50 725 515 90 re f Q 50 725 515 90 re S\n";
 
 const char* PDF_FONTS_NAMES[PDF_FONT_LAST] =
 {
@@ -102,10 +90,8 @@ const char* PDF_FONTS_NAMES[PDF_FONT_LAST] =
 //object 1 - root
 //object 2 - pages, generate at the end
 //object 3 - resources (fonts)
-//object 4, 5 - internal fonts (Courier, Courier-Bold), not embedded!
-//object 6 - encryption data
-//object 7 - info
-//object 8 - header of the pages (not modifiable), used only for audit trail file
+//object 4 - encryption data
+//object 5 - info
 //object 9 - font description (embedded font)
 //object 10 - font widthes (embedded font)
 //object 11 - font data (embedded font)
@@ -122,8 +108,10 @@ uint32_t PDF_XrefPos;     //current Xref position
 uint8_t PDF_Font;         //current PDF font
 uint16_t PDF_UsedFonts;   //list of used fonts
 uint16_t PDF_FirstFontObject;   //first font object
-TPDFEncryptRec PDF_EncryptRec;  //structure for encrypting the document
 hFile PDF_Handler;
+#ifdef PDF_USE_ENCRYPT
+  TPDFEncryptRec PDF_EncryptRec;  //structure for encrypting the document
+#endif // PDF_USE_ENCRYPT
 
 /** \brief Convert byte value to HEX string
  *
@@ -131,7 +119,7 @@ hFile PDF_Handler;
  * \return String with HEX representation
  *
  */
-char *PDF_ByteToHex(uint8_t byte)
+static char *PDF_ByteToHex(uint8_t byte)
 {
   static char str[3];
 
@@ -155,7 +143,7 @@ char *PDF_ByteToHex(uint8_t byte)
  * \return Length of new string
  *
  */
-uint8_t PDF_EscString(uint8_t *str, uint8_t *key, uint16_t len)
+static uint8_t PDF_EscString(uint8_t *str, uint8_t *key, uint16_t len)
 {
   uint8_t i;
   uint8_t res = 0;
@@ -183,7 +171,7 @@ uint8_t PDF_EscString(uint8_t *str, uint8_t *key, uint16_t len)
  * \return
  *
  */
-void PDF_PadOrTruncatePasswd(const char *pwd, uint8_t *new_pwd)
+static void PDF_PadOrTruncatePasswd(const char *pwd, uint8_t *new_pwd)
 {
   uint8_t len = strlen(pwd);
 
@@ -209,7 +197,7 @@ void PDF_PadOrTruncatePasswd(const char *pwd, uint8_t *new_pwd)
  * \return
  *
  */
-void PDF_Encrypt_Init(TPDFEncryptRec *attr)
+static void PDF_Encrypt_Init(TPDFEncryptRec *attr)
 {
   memset(attr, 0, sizeof(TPDFEncryptRec));
   attr->mode = PDF_ENCRYPT_R3;
@@ -226,7 +214,7 @@ void PDF_Encrypt_Init(TPDFEncryptRec *attr)
  * \return
  *
  */
-void PDF_Encrypt_CreateOwnerKey(TPDFEncryptRec *attr)
+static void PDF_Encrypt_CreateOwnerKey(TPDFEncryptRec *attr)
 {
   ARC4_Ctx_Rec rc4_ctx;
   TMD5Context md5_ctx;
@@ -287,7 +275,7 @@ void PDF_Encrypt_CreateOwnerKey(TPDFEncryptRec *attr)
  * \return
  *
  */
-void PDF_Encrypt_CreateEncryptionKey(TPDFEncryptRec *attr)
+static void PDF_Encrypt_CreateEncryptionKey(TPDFEncryptRec *attr)
 {
   TMD5Context md5_ctx;
   uint8_t tmp_flg[4];
@@ -331,7 +319,7 @@ void PDF_Encrypt_CreateEncryptionKey(TPDFEncryptRec *attr)
  * \return
  *
  */
-void PDF_Encrypt_CreateUserKey(TPDFEncryptRec *attr)
+static void PDF_Encrypt_CreateUserKey(TPDFEncryptRec *attr)
 {
   ARC4_Ctx_Rec ctx;
   uint8_t digest[MD5_KEY_LEN];
@@ -387,7 +375,7 @@ void PDF_Encrypt_CreateUserKey(TPDFEncryptRec *attr)
  * \return
  *
  */
-void PDF_Encrypt_InitKey(TPDFEncryptRec *attr, uint32_t object_id, uint16_t gen_no)
+static void PDF_Encrypt_InitKey(TPDFEncryptRec *attr, uint32_t object_id, uint16_t gen_no)
 {
   TMD5Context md5_ctx;
   uint8_t key_len;
@@ -414,14 +402,12 @@ void PDF_Encrypt_InitKey(TPDFEncryptRec *attr, uint32_t object_id, uint16_t gen_
  * \return
  *
  */
-#ifdef PDF_USE_ENCRYPT
-void PDF_Encrypt_Reset(TPDFEncryptRec *attr)
+static void PDF_Encrypt_Reset(TPDFEncryptRec *attr)
 {
   uint8_t key_len = (attr->key_len + 5 > PDF_ENCRYPT_KEY_MAX) ? PDF_ENCRYPT_KEY_MAX : attr->key_len + 5;
 
   ARC4_Init(&attr->arc4ctx, attr->md5_encryption_key, key_len);
 }
-#endif // PDF_USE_ENCRYPT
 
 /** \brief Encrypt buffer with ARC4
  *
@@ -430,155 +416,12 @@ void PDF_Encrypt_Reset(TPDFEncryptRec *attr)
  * \return
  *
  */
-#ifdef PDF_USE_ENCRYPT
-void PDF_Encrypt_CryptBuf(TPDFEncryptRec *attr, uint8_t *src, uint8_t *dst, uint32_t len)
+static void PDF_Encrypt_CryptBuf(TPDFEncryptRec *attr, uint8_t *src, uint8_t *dst, uint32_t len)
 {
   ARC4_CryptBuf(&attr->arc4ctx, src, dst, len);
 }
-#endif // PDF_USE_ENCRYPT
 
-//------------------------------------------------------------------------------
-// PDF_WriteObject - write objects to PDF file
-//------------------------------------------------------------------------------
-/*int PDF_Write(FILE *fdst, uint8_t type, void *data)
-{
-  char str[512];
-  char str2[512];
-  uint32_t fr;
-  uint32_t br, bw;         // File read/write count
-  TPdfText *pdfText;
-  TPdfHeader *pdfHeader;
-  uint32_t pos;
-  uint32_t len;
-
-  pos = PDF_WR_ftell(fdst); //save current file position
-
-  PDF_XrefTable[PDF_CurrObject].isPage = false;
-
-  switch (type)
-  {
-    case PDF_OBJECT_RESOURCES:
-      //resources object
-      strcpy(str, PDF_RESOURCE_OBJECT);
-      PDF_XrefTable[PDF_OBJNUM_RESOURCES].Position = pos;
-      break;
-    case PDF_OBJECT_FONT:
-      //object for internal fonts, replaced with embedded font now
-      len = *((int*)data);
-      if (len==1)
-      {
-        strcpy(str, PDF_FONT1_OBJECT);
-        PDF_XrefTable[PDF_OBJNUM_FONT1].Position = pos;
-      } else
-      {
-        strcpy(str, PDF_FONT2_OBJECT);
-        PDF_XrefTable[PDF_OBJNUM_FONT2].Position = pos;
-      }
-      break;
-    case PDF_OBJECT_GRAPH:
-      //graphical object, write without text pattern
-      PDF_XrefTable[PDF_CurrObject].Position = pos; //save current file position
-      pdfText = (TPdfText*)data;
-      strcpy(str, pdfText->Text);
-      len = strlen(str);
-      sprintf(str2, PDF_STREAM_OBJ_START, PDF_CurrObject, len);
-      br = strlen(str2);
-      fr = f_write(fdst, str2, br, &bw);
-      if (fr!=FR_OK)
-        return fr;
-      if (PDF_Encrypt)
-      {
-        //encrypt string
-        PDF_Encrypt_InitKey(&PDF_EncryptRec, PDF_CurrObject, 0);
-        PDF_Encrypt_CryptBuf(&PDF_EncryptRec, (uint8_t*)str, (uint8_t*)str2, len);
-        fr = f_write(fdst, str2, len, &bw);
-      } else
-      {
-        fr = f_write(fdst, str, len, &bw);
-      }
-      if (fr!=FR_OK)
-        return fr;
-      strcpy(str, PDF_STREAM_OBJ_END);
-      PDF_CurrObject++;
-      break;
-    case PDF_OBJECT_EMBFONT:
-      //embedded font object
-      //write font definition to file
-      PDF_XrefTable[PDF_OBJNUM_FONT1].Position = pos;
-      len = strlen(PDF_FONT1_DEF);
-      fr = f_write(fdst, PDF_FONT1_DEF, len, &bw);
-      if (fr!=FR_OK)
-        return fr;
-      //write font description to file
-      PDF_XrefTable[PDF_OBJNUM_FONTDESCR].Position = f_tell(fdst);
-      len = strlen(PDF_FONT1_DESC);
-      fr = f_write(fdst, PDF_FONT1_DESC, len, &bw);
-      if (fr!=FR_OK)
-        return fr;
-      //write font widthes to file
-      PDF_XrefTable[PDF_OBJNUM_FONTWIDTHS].Position = f_tell(fdst);
-      len = strlen(PDF_FONT1_WIDTH_START);
-      fr = f_write(fdst, PDF_FONT1_WIDTH_START, len, &bw);
-      if (fr!=FR_OK)
-        return fr;
-      for (br=32; br<=255; br+=16)
-      {
-        len = strlen(PDF_FONT1_WIDTH_CONT);
-        fr = f_write(fdst, PDF_FONT1_WIDTH_CONT, len, &bw);
-        if (fr!=FR_OK)
-          return fr;
-      }
-      len = strlen(PDF_FONT1_WIDTH_END);
-      fr = f_write(fdst, PDF_FONT1_WIDTH_END, len, &bw);
-      if (fr!=FR_OK)
-        return fr;
-      //write ttf font to file
-      PDF_XrefTable[PDF_OBJNUM_EMBFONT].Position = f_tell(fdst);
-      len = sizeof(acCourierFont);
-      sprintf(str2, PDF_STREAM_FONTOBJ_START, PDF_OBJNUM_EMBFONT, len, len);
-      br = strlen(str2);
-      fr = f_write(fdst, str2, br, &bw);
-      if (fr!=FR_OK)
-        return fr;
-      //write font file to document
-      if (PDF_Encrypt)
-        PDF_Encrypt_InitKey(&PDF_EncryptRec, PDF_OBJNUM_EMBFONT, 0);
-      br = 0;
-      //pos = 0;
-      while (br<sizeof(acCourierFont))
-      {
-        if (sizeof(acCourierFont)-br>sizeof(str))
-          len = sizeof(str);
-        else
-          len = sizeof(acCourierFont) - br;
-        if (PDF_Encrypt)
-        {
-          //encrypt font stream
-          PDF_Encrypt_CryptBuf(&PDF_EncryptRec, (uint8_t*)&acCourierFont[br], (uint8_t*)str, len);
-        } else
-        {
-          for (pos=0; pos<len; pos++)
-            str[pos] = acCourierFont[br + pos];
-          //memcpy(str, &acCourierFont[br], len);
-        }
-        fr = f_write(fdst, str, len, &bw);
-        if (fr!=FR_OK)
-          return fr;
-        br += len;
-        //pos++;
-        //if (pos>10)
-        //{
-        //  pos = 0;
-        //  os_dly_wait(1);
-        //}
-      }
-      //write end of stream object
-      strcpy(str, PDF_STREAM_OBJ_END2);
-      break;
-  }
-}*/
-
-uint16_t PDF_PrepareString(char *src, char* dst, bool doEsc, uint16_t num, bool init)
+static uint16_t PDF_PrepareString(char *src, char* dst, bool doEsc, uint16_t num, bool init)
 {
   uint16_t len;
   char temp[PDF_BLOCK_SIZE+1];
@@ -617,8 +460,10 @@ uint8_t PDF_Start(char *name, char *title, char *author)
   uint8_t i;
   char str[PDF_BLOCK_SIZE*2];
   uint16_t len;
-  TMD5Context md5_ctx;
   PdfTime dt;
+  #ifdef PDF_USE_ENCRYPT
+    TMD5Context md5_ctx;
+  #endif
 
   if (PDF_Handler != NULL)
     return PDF_ERR_BUSY;
@@ -635,19 +480,19 @@ uint8_t PDF_Start(char *name, char *title, char *author)
     /* reset Xref table */
     PDF_XrefTable[i] = 0;
   }
-  //generate encryption keys
-  PDF_Encrypt_Init(&PDF_EncryptRec);
-  //generate file ID from serial number and test number/length of audit trail
-  memcpy(str, PDF_DUMMY_ID, PDF_ID_LEN);
-  //memcpy(&str[16], PDF_DUMMY_ID, PDF_ID_LEN);
-  //REMARK: for some strings md5 hash is right but is not accepted, decoding doesn't work!
-  PDF_WR_srand();
-  sprintf(str, "%d%d", PDF_WR_rand(), PDF_WR_rand()); //ID string should be 16 bytes or longer!
-  str[strlen(str)] = 0x20;
-  MD5_Init(&md5_ctx);
-  MD5_Update(&md5_ctx, (uint8_t*)str, PDF_ID_LEN);
-  MD5_Final(PDF_EncryptRec.encrypt_id, &md5_ctx);
   #ifdef PDF_USE_ENCRYPT
+    /**< generate encryption keys */
+    PDF_Encrypt_Init(&PDF_EncryptRec);
+    //generate file ID from serial number and test number/length of audit trail
+    memcpy(str, PDF_DUMMY_ID, PDF_ID_LEN);
+    //memcpy(&str[16], PDF_DUMMY_ID, PDF_ID_LEN);
+    //REMARK: for some strings md5 hash is right but is not accepted, decoding doesn't work!
+    PDF_WR_srand();
+    sprintf(str, "%d%d", PDF_WR_rand(), PDF_WR_rand()); //ID string should be 16 bytes or longer!
+    str[strlen(str)] = 0x20;
+    MD5_Init(&md5_ctx);
+    MD5_Update(&md5_ctx, (uint8_t*)str, PDF_ID_LEN);
+    MD5_Final(PDF_EncryptRec.encrypt_id, &md5_ctx);
     PDF_Encrypt_CreateOwnerKey(&PDF_EncryptRec);
     PDF_Encrypt_CreateEncryptionKey(&PDF_EncryptRec);
     PDF_Encrypt_CreateUserKey(&PDF_EncryptRec);
@@ -715,13 +560,13 @@ uint8_t PDF_Start(char *name, char *title, char *author)
     if (!PDF_WR_fwrite(PDF_Handler, PDF_INFO_OBJ_5, strlen(PDF_INFO_OBJ_5)))
       break;
 
-    PDF_XrefTable[PDF_OBJNUM_IMAGE] = PDF_WR_ftell(PDF_Handler);
+    /*PDF_XrefTable[PDF_OBJNUM_IMAGE] = PDF_WR_ftell(PDF_Handler);
     if (!PDF_WR_fwrite(PDF_Handler, PDF_IMAGE_HEADER, strlen(PDF_IMAGE_HEADER)))
       break;
     if (!PDF_WR_fwrite(PDF_Handler, PDF_TEST_IMAGE, sizeof(PDF_TEST_IMAGE)))
       break;
     if (!PDF_WR_fwrite(PDF_Handler, PDF_STREAM_OBJ_END, strlen(PDF_STREAM_OBJ_END)))
-      break;
+      break;*/
 
     return PDF_ERR_NONE;
   }
@@ -810,6 +655,50 @@ uint8_t PDF_AddPage(bool has_header)
   return ret;
 }
 
+uint8_t PDF_AddStream(char *stream)
+{
+  char str[PDF_BLOCK_SIZE*2];
+  char str2[PDF_BLOCK_SIZE*2];
+  uint16_t len;
+  uint16_t size;
+  uint16_t i;
+  uint32_t pos = PDF_WR_ftell(PDF_Handler);
+
+  if (PDF_Handler == NULL)
+    return PDF_ERR_NOTSTARTED;
+
+  if (PDF_CurrObject >= PDF_MAX_NUM)
+    return PDF_ERR_MAXNUM;
+
+  if ((pos - PDF_XrefPos) > PDF_MAX_BLOCKLEN)
+    return PDF_ERR_LONGBLOCK;
+
+  size = strlen(stream);
+  PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos);
+  PDF_XrefPos = pos;
+  /* write stream header */
+  sprintf(str, PDF_STREAM_OBJ_START, PDF_CurrObject, size);
+  if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
+    return PDF_ERR_FILE;
+  /* write stream content */
+  i = 0;
+  PDF_Encrypt_InitKey(&PDF_EncryptRec, PDF_CurrObject, 0);
+  while (i < size)
+  {
+    strncpy(str2, &stream[i], PDF_BLOCK_SIZE);
+    i += PDF_BLOCK_SIZE;
+    len = PDF_PrepareString(str2, str, false, PDF_CurrObject, false);
+    if (!PDF_WR_fwrite(PDF_Handler, str, len))
+      return PDF_ERR_FILE;
+  }
+  /* write end of stream */
+  if (!PDF_WR_fwrite(PDF_Handler, PDF_STREAM_OBJ_END, strlen(PDF_STREAM_OBJ_END)))
+    return PDF_ERR_FILE;
+  PDF_CurrObject++;
+
+  return PDF_ERR_NONE;
+}
+
 /** \brief Add text to existing page
  *
  * \param [in] fd File descriptor
@@ -818,7 +707,7 @@ uint8_t PDF_AddPage(bool has_header)
  * \return
  *
  */
-uint8_t PDF_AddText(uint16_t x, uint16_t y, char *text)
+uint8_t PDF_AddText(uint16_t x, uint16_t y, uint8_t f_size, char *text)
 {
   char str[PDF_BLOCK_SIZE*2];
   char str2[PDF_BLOCK_SIZE*2];
@@ -839,7 +728,7 @@ uint8_t PDF_AddText(uint16_t x, uint16_t y, char *text)
   size = strlen(text);
   PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos);
   PDF_XrefPos = pos;
-  sprintf(str, PDF_TEXT_START, PDF_Font + 1, 14, x, PDF_PAGE_HEIGHT - y);
+  sprintf(str, PDF_TEXT_START, PDF_Font + 1, f_size, x, PDF_PAGE_HEIGHT - y);
   len = strlen(str);
   len += size;
   len += strlen(PDF_TEXT_END);
@@ -868,6 +757,31 @@ uint8_t PDF_AddText(uint16_t x, uint16_t y, char *text)
   return PDF_ERR_NONE;
 }
 
+/** \brief Add frame with filling
+ *
+ * \param
+ * \param
+ * \return
+ *
+ */
+uint8_t PDF_AddFrame(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint32_t color, bool fill)
+{
+  char str[64];
+
+  if (PDF_Handler == NULL)
+    return PDF_ERR_NOTSTARTED;
+
+  if (PDF_CurrObject >= PDF_MAX_NUM)
+    return PDF_ERR_MAXNUM;
+
+  if (fill)
+    sprintf(str, PDF_FRAME_FMT, (float)((color>>16)&0xff)/0xff, (float)((color>>8)&0xff)/0xff, (float)(color&0xff)/0xff, x, PDF_PAGE_HEIGHT - y - height, width, height, 'f');
+  else
+    sprintf(str, PDF_FRAME_FMT, (float)((color>>16)&0xff)/0xff, (float)((color>>8)&0xff)/0xff, (float)(color&0xff)/0xff, x, PDF_PAGE_HEIGHT - y - height, width, height, 'S');
+
+  return PDF_AddStream(str);
+}
+
 /** \brief Add text to header/footer
  *
  * \param
@@ -875,14 +789,14 @@ uint8_t PDF_AddText(uint16_t x, uint16_t y, char *text)
  * \return
  *
  */
-uint8_t PDF_AddTextToHeader(uint16_t x, uint16_t y, char *text)
+uint8_t PDF_AddTextToHeader(uint16_t x, uint16_t y, uint8_t f_size, char *text)
 {
   uint8_t res;
 
   if (PDF_PageNum > 0)
     return PDF_ERR_HEADER;
 
-  res = PDF_AddText(x, y, text);
+  res = PDF_AddText(x, y, f_size, text);
   if (res != PDF_ERR_NONE)
     return res;
 
@@ -892,49 +806,35 @@ uint8_t PDF_AddTextToHeader(uint16_t x, uint16_t y, char *text)
   return PDF_ERR_NONE;
 }
 
-uint8_t PDF_AddStream(char *stream)
+/** \brief Add frame to header/footer
+ *
+ * \param
+ * \param
+ * \return
+ *
+ */
+uint8_t PDF_AddFrameToHeader(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint32_t color, bool fill)
 {
-  char str[PDF_BLOCK_SIZE*2];
-  char str2[PDF_BLOCK_SIZE*2];
-  uint16_t len;
-  uint16_t size;
-  uint16_t i;
-  uint32_t pos = PDF_WR_ftell(PDF_Handler);
+  uint8_t res;
 
-  if (PDF_Handler == NULL)
-    return PDF_ERR_NOTSTARTED;
+  if (PDF_PageNum > 0)
+    return PDF_ERR_HEADER;
 
-  if (PDF_CurrObject >= PDF_MAX_NUM)
-    return PDF_ERR_MAXNUM;
+  res = PDF_AddFrame(x, y, width, height, color, fill);
+  if (res != PDF_ERR_NONE)
+    return res;
 
-  if ((pos - PDF_XrefPos) > PDF_MAX_BLOCKLEN)
-    return PDF_ERR_LONGBLOCK;
-
-  size = strlen(stream);
-  PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos);
-  PDF_XrefPos = pos;
-  /* write stream header */
-  sprintf(str, PDF_STREAM_OBJ_START, PDF_CurrObject, size);
-  if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
-    return PDF_ERR_FILE;
-  /* write stream content */
-  i = 0;
-  while (i < size)
-  {
-    strncpy(str2, &stream[i], PDF_BLOCK_SIZE);
-    i += PDF_BLOCK_SIZE;
-    len = PDF_PrepareString(str2, str, false, PDF_CurrObject, false);
-    if (!PDF_WR_fwrite(PDF_Handler, str, len))
-      return PDF_ERR_FILE;
-  }
-  /* write end of stream */
-  if (!PDF_WR_fwrite(PDF_Handler, PDF_STREAM_OBJ_END, strlen(PDF_STREAM_OBJ_END)))
-    return PDF_ERR_FILE;
-  PDF_CurrObject++;
+  PDF_LastHeader++;
+  PDF_LastObject++;
 
   return PDF_ERR_NONE;
 }
 
+/** \brief Set current font as number
+ *
+ * \param [in] font Number of the standard font
+ *
+ */
 void PDF_SetFont(uint8_t font)
 {
   if (font > PDF_FONT_LAST)
@@ -944,16 +844,30 @@ void PDF_SetFont(uint8_t font)
   PDF_UsedFonts |= (1 << font);
 }
 
+/** \brief Set current color
+ *
+ * \param [in] color Color in RGB format to set
+ * \return Error code
+ *
+ */
+uint8_t PDF_SetColor(uint32_t color)
+{
+  char str[64];
+
+  sprintf(str, PDF_SET_COLOR, (float)((color>>16)&0xff)/0xff, (float)((color>>8)&0xff)/0xff, (float)(color&0xff)/0xff);
+
+  return PDF_AddStream(str);
+}
+
 /** \brief Finish PDF generation, close handlers, save tables and write end of the file
  *
  * \param [in] fd File descriptor
- * \return
+ * \return Error code
  *
  */
 uint8_t PDF_Finish(void)
 {
   char str[64];
-  char str2[64];
   uint32_t len;
   uint32_t pos;
 
@@ -969,7 +883,9 @@ uint8_t PDF_Finish(void)
   {
     if (PDF_UsedFonts & (1 << len))
     {
-      PDF_XrefTable[PDF_CurrObject] = PDF_WR_ftell(PDF_Handler);
+      pos = PDF_WR_ftell(PDF_Handler);
+      PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos);
+      PDF_XrefPos = pos;
       sprintf(str, PDF_FONT_OBJ_START, PDF_CurrObject++);
       if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
         return PDF_ERR_FILE;
@@ -1047,19 +963,22 @@ uint8_t PDF_Finish(void)
   #ifdef PDF_USE_ENCRYPT
     if (!PDF_WR_fwrite(PDF_Handler, PDF_TRAILER_ENC, strlen(PDF_TRAILER_ENC)))
       return PDF_ERR_FILE;
+    //if (!PDF_WR_fwrite(PDF_Handler, PDF_TRAILER_MID, strlen(PDF_TRAILER_MID)))
+    //  return PDF_ERR_FILE;
+    strcpy(str, "<");
+    for (len=0; len<PDF_ID_LEN; len++)
+      strcat(str, PDF_ByteToHex(PDF_EncryptRec.encrypt_id[len]));
+    strcat(str, ">");
+    if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str))) /* print ID twice! */
+      return PDF_ERR_FILE;
+    if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
+      return PDF_ERR_FILE;
+    if (!PDF_WR_fwrite(PDF_Handler, PDF_TRAILER_ENC_END, strlen(PDF_TRAILER_ENC_END)))
+      return PDF_ERR_FILE;
+  #else
+    if (!PDF_WR_fwrite(PDF_Handler, PDF_TRAILER_END, strlen(PDF_TRAILER_END)))
+      return PDF_ERR_FILE;
   #endif // PDF_USE_ENCRYPT
-  if (!PDF_WR_fwrite(PDF_Handler, PDF_TRAILER_MID, strlen(PDF_TRAILER_MID)))
-    return PDF_ERR_FILE;
-  strcpy(str2, "<");
-  for (len=0; len<PDF_ID_LEN; len++)
-    strcat(str2, PDF_ByteToHex(PDF_EncryptRec.encrypt_id[len]));
-  strcat(str2, ">");
-  if (!PDF_WR_fwrite(PDF_Handler, str2, strlen(str2))) /* print ID twice! */
-    return PDF_ERR_FILE;
-  if (!PDF_WR_fwrite(PDF_Handler, str2, strlen(str2)))
-    return PDF_ERR_FILE;
-  if (!PDF_WR_fwrite(PDF_Handler, PDF_TRAILER_END, strlen(PDF_TRAILER_END)))
-    return PDF_ERR_FILE;
   /**< write xref start position */
   sprintf(str, PDF_XREF_END, pos);
   if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
@@ -1087,3 +1006,100 @@ void PDF_Abort(void)
   PDF_WR_fclose(PDF_Handler);
   PDF_Handler = NULL;
 }
+
+//------------------------------------------------------------------------------
+// PDF_WriteObject - write objects to PDF file
+//------------------------------------------------------------------------------
+/*int PDF_Write(FILE *fdst, uint8_t type, void *data)
+{
+  char str[512];
+  char str2[512];
+  uint32_t fr;
+  uint32_t br, bw;         // File read/write count
+  TPdfText *pdfText;
+  TPdfHeader *pdfHeader;
+  uint32_t pos;
+  uint32_t len;
+
+  pos = PDF_WR_ftell(fdst); //save current file position
+
+  PDF_XrefTable[PDF_CurrObject].isPage = false;
+
+  switch (type)
+  {
+    case PDF_OBJECT_EMBFONT:
+      //embedded font object
+      //write font definition to file
+      PDF_XrefTable[PDF_OBJNUM_FONT1].Position = pos;
+      len = strlen(PDF_FONT1_DEF);
+      fr = f_write(fdst, PDF_FONT1_DEF, len, &bw);
+      if (fr!=FR_OK)
+        return fr;
+      //write font description to file
+      PDF_XrefTable[PDF_OBJNUM_FONTDESCR].Position = f_tell(fdst);
+      len = strlen(PDF_FONT1_DESC);
+      fr = f_write(fdst, PDF_FONT1_DESC, len, &bw);
+      if (fr!=FR_OK)
+        return fr;
+      //write font widthes to file
+      PDF_XrefTable[PDF_OBJNUM_FONTWIDTHS].Position = f_tell(fdst);
+      len = strlen(PDF_FONT1_WIDTH_START);
+      fr = f_write(fdst, PDF_FONT1_WIDTH_START, len, &bw);
+      if (fr!=FR_OK)
+        return fr;
+      for (br=32; br<=255; br+=16)
+      {
+        len = strlen(PDF_FONT1_WIDTH_CONT);
+        fr = f_write(fdst, PDF_FONT1_WIDTH_CONT, len, &bw);
+        if (fr!=FR_OK)
+          return fr;
+      }
+      len = strlen(PDF_FONT1_WIDTH_END);
+      fr = f_write(fdst, PDF_FONT1_WIDTH_END, len, &bw);
+      if (fr!=FR_OK)
+        return fr;
+      //write ttf font to file
+      PDF_XrefTable[PDF_OBJNUM_EMBFONT].Position = f_tell(fdst);
+      len = sizeof(acCourierFont);
+      sprintf(str2, PDF_STREAM_FONTOBJ_START, PDF_OBJNUM_EMBFONT, len, len);
+      br = strlen(str2);
+      fr = f_write(fdst, str2, br, &bw);
+      if (fr!=FR_OK)
+        return fr;
+      //write font file to document
+      if (PDF_Encrypt)
+        PDF_Encrypt_InitKey(&PDF_EncryptRec, PDF_OBJNUM_EMBFONT, 0);
+      br = 0;
+      //pos = 0;
+      while (br<sizeof(acCourierFont))
+      {
+        if (sizeof(acCourierFont)-br>sizeof(str))
+          len = sizeof(str);
+        else
+          len = sizeof(acCourierFont) - br;
+        if (PDF_Encrypt)
+        {
+          //encrypt font stream
+          PDF_Encrypt_CryptBuf(&PDF_EncryptRec, (uint8_t*)&acCourierFont[br], (uint8_t*)str, len);
+        } else
+        {
+          for (pos=0; pos<len; pos++)
+            str[pos] = acCourierFont[br + pos];
+          //memcpy(str, &acCourierFont[br], len);
+        }
+        fr = f_write(fdst, str, len, &bw);
+        if (fr!=FR_OK)
+          return fr;
+        br += len;
+        //pos++;
+        //if (pos>10)
+        //{
+        //  pos = 0;
+        //  os_dly_wait(1);
+        //}
+      }
+      //write end of stream object
+      strcpy(str, PDF_STREAM_OBJ_END2);
+      break;
+  }
+}*/
