@@ -136,6 +136,19 @@ static char *PDF_ByteToHex(uint8_t byte)
   return str;
 }
 
+/** \brief Check if symbol needs to be escaped
+ *
+ * \param [in] ch Symbol to check
+ * \return True if symbol needs to be escaped
+ *
+ */
+static bool PDF_CheckEsc(uint8_t ch)
+{
+  if ((ch == '(')||(ch == ')')||(ch == '\\'))
+    return true;
+  return false;
+}
+
 /** \brief Build escaped string
  *
  * \param [out] str Output string
@@ -150,14 +163,16 @@ static uint8_t PDF_EscString(uint8_t *str, uint8_t *key, uint16_t len)
 
   for (i=0; i<len; i++)
   {
-    switch (key[i])
+    /*switch (key[i])
     {
       case '(':
       case ')':
       case '\\':
         str[res++] = '\\';
         break;
-    }
+    }*/
+    if (PDF_CheckEsc(key[i]))
+      str[res++] = '\\';
     str[res++] = key[i];
   }
 
@@ -498,7 +513,7 @@ uint8_t PDF_Start(char *name, char *title, char *author)
     PDF_Encrypt_CreateUserKey(&PDF_EncryptRec);
   #endif // PDF_USE_ENCRYPT
 
-  PDF_Handler = fopen(name, "wb");
+  PDF_Handler = PDF_WR_fopen(name);
   while (PDF_Handler!=NULL)
   {
     /**< write header */
@@ -582,9 +597,7 @@ uint8_t PDF_Start(char *name, char *title, char *author)
 
 /** \brief Write page object to document
  *
- * \param
- * \param
- * \return
+ * \return Error code
  *
  */
 uint8_t PDF_WritePage(void)
@@ -635,9 +648,8 @@ uint8_t PDF_WritePage(void)
 
 /** \brief Add new page
  *
- * \param
- * \param
- * \return
+ * \param [in] has_header True if page has a header
+ * \return Error code
  *
  */
 uint8_t PDF_AddPage(bool has_header)
@@ -682,7 +694,9 @@ uint8_t PDF_AddStream(char *stream)
     return PDF_ERR_FILE;
   /* write stream content */
   i = 0;
-  PDF_Encrypt_InitKey(&PDF_EncryptRec, PDF_CurrObject, 0);
+  #ifdef PDF_USE_ENCRYPT
+    PDF_Encrypt_InitKey(&PDF_EncryptRec, PDF_CurrObject, 0);
+  #endif // PDF_USE_ENCRYPT
   while (i < size)
   {
     strncpy(str2, &stream[i], PDF_BLOCK_SIZE);
@@ -701,10 +715,11 @@ uint8_t PDF_AddStream(char *stream)
 
 /** \brief Add text to existing page
  *
- * \param [in] fd File descriptor
- * \param
- * \param
- * \return
+ * \param [in] x Position X of text
+ * \param [in] y Position Y of text
+ * \param [in] f_size Font size to use
+ * \param [in] text Text data to display
+ * \return Error code
  *
  */
 uint8_t PDF_AddText(uint16_t x, uint16_t y, uint8_t f_size, char *text)
@@ -726,6 +741,13 @@ uint8_t PDF_AddText(uint16_t x, uint16_t y, uint8_t f_size, char *text)
     return PDF_ERR_LONGBLOCK;
 
   size = strlen(text);
+  len = size;
+  for (i=0; i<len; i++)
+  {
+    /**< search for ()\ */
+    if (PDF_CheckEsc(text[i]))
+      size++;
+  }
   PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos);
   PDF_XrefPos = pos;
   sprintf(str, PDF_TEXT_START, PDF_Font + 1, f_size, x, PDF_PAGE_HEIGHT - y);
@@ -741,8 +763,10 @@ uint8_t PDF_AddText(uint16_t x, uint16_t y, uint8_t f_size, char *text)
   i = 0;
   while (i < size)
   {
-    strncpy(str2, &text[i], PDF_BLOCK_SIZE);
+    strncpy(str, &text[i], PDF_BLOCK_SIZE);
+    str[PDF_BLOCK_SIZE] = 0;
     i += PDF_BLOCK_SIZE;
+    len = PDF_EscString((uint8_t*)str2, (uint8_t*)str, PDF_BLOCK_SIZE);
     len = PDF_PrepareString(str2, str, false, PDF_CurrObject, false);
     if (!PDF_WR_fwrite(PDF_Handler, str, len))
       return PDF_ERR_FILE;

@@ -15,11 +15,11 @@ int main()
     PDF_SetFont(PDF_FONT_TIMES);
     PDF_AddText(100, 120, 14, "Test Test Test Test Test Test Test Test 1");
     PDF_SetFont(PDF_FONT_COURIER_ITALIC);
-    PDF_AddText(100, 150, 14, "Test 2");
+    PDF_AddText(100, 150, 14, "Test (2");
     PDF_AddText(100, 180, 14, "Test 3");
-    PDF_AddText(100, 210, 14, "Test 4");
+    PDF_AddText(100, 210, 14, "Test (4");
     PDF_AddText(100, 240, 14, "Test 5");
-    PDF_AddText(100, 270, 14, "Test 6");
+    PDF_AddText(100, 270, 14, "Test \\6");
     PDF_AddText(100, 300, 14, "Test 7");
     PDF_AddText(100, 330, 14, "Test 8");
     PDF_AddText(100, 360, 14, "Test 9");
