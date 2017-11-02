@@ -17,8 +17,8 @@ const char PDF_FIRST_OBJECT[] = "1 0 obj\n<< /Type /Catalog /Pages 2 0 R>>\nendo
 const char PDF_PAGES_OBJ_START[] = "2 0 obj\n<< /Type /Pages /Count %d /Kids [";
 const char PDF_PAGES_OBJ_END[] = "] /MediaBox [0 0 595 842]>>\nendobj\n";
 const char PDF_RESOURCE_START[] = "3 0 obj\n<</Font <<";
-//const char PDF_RESOURCE_END[] = ">> /XObject <</Im1 6 0 R>>>>\nendobj\n";
-const char PDF_RESOURCE_END[] = ">>>>\nendobj\n";
+const char PDF_RESOURCE_END[] = ">> /XObject <</Im0 6 0 R>>>>\nendobj\n";
+//const char PDF_RESOURCE_END[] = ">>>>\nendobj\n";
 const char PDF_PAGE_OBJ_START[] = "%d 0 obj\n<< /Type /Page /Parent 2 0 R /Resources 3 0 R /Contents [";
 const char PDF_PAGE_OBJ_END[] = "]>>\nendobj\n";
 const char PDF_ENC_OBJ_START[] = "4 0 obj\n<</Filter /Standard /V 2 /R 3 /Length 40 /U(";
@@ -63,12 +63,17 @@ const uint8_t PDF_PADDING_STRING[] = {
     0x2F, 0x0C, 0xA9, 0xFE, 0x64, 0x53, 0x69, 0x7A
 };
 
-const uint8_t PDF_TEST_IMAGE[] = {0x80, 0x80, 0x80, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0x80, 0x80, 0x80, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF,
-                                  0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0x80, 0x80, 0x80, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0x80, 0x80, 0x80};
+/*const uint8_t PDF_TEST_IMAGE[] = {0x80, 0x80, 0x80, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0x80, 0x80, 0x80, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF,
+                                  0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0x80, 0x80, 0x80, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0x80, 0x80, 0x80};*/
+const uint8_t PDF_TEST_IMAGE[] = {0x78, 0x9C, 0x7B, 0xD4, 0xF2, 0xFF, 0x11, 0x29, 0x08, 0x00, 0xA9, 0x35, 0x26, 0x51};
 //"EEEEEEEEEEEEEEEE";
-const char PDF_IMAGE_HEADER[] = "6 0 obj\n<</Type /XObject /Subtype /Image /Name /Im1 /Width 4 /Height 4 /BitsPerComponent 8 /ColorSpace /DeviceRGB /Length 48>>\nstream\n";
+//const char PDF_IMAGE_HEADER[] = "6 0 obj\n<</Type /XObject /Subtype /Image /BitsPerComponent 8 /ColorSpace /DeviceRGB /Filter /FlateDecode /Name /Im0 /Width 4 /Height 4 /Length 14>>\nstream\n";
+const char PDF_OBJ_HEADER[] = "%d 0 obj\n";
+const char PDF_IMAGE_HEADER1[] = "<</Type /XObject /Subtype /Image /BitsPerComponent 8 /ColorSpace /DeviceRGB /Filter /FlateDecode /Name ";
+const char PDF_IMAGE_HEADER2[] = "/Im%d /Width %d /Height %d /Length %d>>\nstream\n";
 //"11 0 obj\n<</Type /XObject /Subtype /Image /Name /Im1 /Width 4 /Height 4 /BitsPerComponent 8 /ColorSpace /DeviceGray /Length 16>>\nstream\n";
-const char PDF_IMAGE_INSERT[] = "q 20 0 0 20 500 700 cm /Im1 Do Q\n"; //20 - width, 0, 0, 20 - height, 500 - x offset, 700 - y offset
+//const char PDF_IMAGE_INSERT[] = "q 20 0 0 20 500 700 cm /Im1 Do Q\n"; //20 - width, 0, 0, 20 - height, 500 - x offset, 700 - y offset
+const char PDF_IMAGE_INSERT[] = "q %d 0 0 %d %d %d cm /Im%d Do Q\n";
 
 const char* PDF_FONTS_NAMES[PDF_FONT_LAST] =
 {
@@ -99,15 +104,16 @@ const char* PDF_FONTS_NAMES[PDF_FONT_LAST] =
 
 uint16_t PDF_XrefTable[PDF_MAX_NUM]; //big array to store objects positions
 
-uint32_t PDF_CurrObject;  //current PDF object
+uint16_t PDF_CurrObject;  //current PDF object
 uint16_t PDF_PageNum;     //number of the page
-uint32_t PDF_LastObject;  //last saved PDF object
-uint32_t PDF_LastHeader;  //last PDF object marked as header
+uint16_t PDF_LastObject;  //last saved PDF object
+uint16_t PDF_LastHeader;  //last PDF object marked as header
 bool PDF_HasHeader;       //marker for pages using header/footer
 uint32_t PDF_XrefPos;     //current Xref position
 uint8_t PDF_Font;         //current PDF font
 uint16_t PDF_UsedFonts;   //list of used fonts
 uint16_t PDF_FirstFontObject;   //first font object
+uint8_t PDF_ImagesNum;    //number of images
 hFile PDF_Handler;
 #ifdef PDF_USE_ENCRYPT
   TPDFEncryptRec PDF_EncryptRec;  //structure for encrypting the document
@@ -488,6 +494,7 @@ uint8_t PDF_Start(char *name, char *title, char *author)
   PDF_LastHeader = PDF_CurrObject;
   PDF_PageNum = 0;
   PDF_XrefPos = 0;
+  PDF_ImagesNum = 0;
   PDF_Font = PDF_FONT_TIMES;
   PDF_UsedFonts = (1 << PDF_Font);
   for (i=PDF_OBJNUM_ZERO; i<=PDF_OBJNUM_LAST; i++)
@@ -881,6 +888,60 @@ uint8_t PDF_SetColor(uint32_t color)
   sprintf(str, PDF_SET_COLOR, (float)((color>>16)&0xff)/0xff, (float)((color>>8)&0xff)/0xff, (float)(color&0xff)/0xff);
 
   return PDF_AddStream(str);
+}
+
+/** \brief Add image to existing page
+ *
+ * \param
+ * \param
+ * \return Error code
+ *
+ */
+uint8_t PDF_AddImage(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const TPdfImage *image)
+{
+  char str[PDF_BLOCK_SIZE*2];
+  uint8_t res;
+  uint16_t i, len;
+
+  if (PDF_Handler == NULL)
+    return PDF_ERR_NOTSTARTED;
+
+  if (PDF_CurrObject >= PDF_MAX_NUM)
+    return PDF_ERR_MAXNUM;
+
+  PDF_XrefTable[PDF_OBJNUM_IMAGE/*PDF_CurrObject*/] = PDF_WR_ftell(PDF_Handler);
+  /**< write image header */
+  sprintf(str, PDF_OBJ_HEADER, 6/*PDF_CurrObject*/);
+  if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
+    return PDF_ERR_FILE;
+  if (!PDF_WR_fwrite(PDF_Handler, PDF_IMAGE_HEADER1, strlen(PDF_IMAGE_HEADER1)))
+    return PDF_ERR_FILE;
+  sprintf(str, PDF_IMAGE_HEADER2, PDF_ImagesNum, image->Width, image->Height, image->Length);
+  if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
+    return PDF_ERR_FILE;
+  /**< write image data */
+  i = 0;
+  while (i < image->Length)
+  {
+    len = PDF_BLOCK_SIZE;
+    if ((image->Length - i) < PDF_BLOCK_SIZE)
+      len = image->Length - i;
+    if (!PDF_WR_fwrite(PDF_Handler, &(image->Data[i]), len))
+      return PDF_ERR_FILE;
+    i += len;
+  }
+  if (!PDF_WR_fwrite(PDF_Handler, PDF_STREAM_OBJ_END, strlen(PDF_STREAM_OBJ_END)))
+    return PDF_ERR_FILE;
+  PDF_CurrObject++;
+  /**< write stream with image displaying instructions */
+  sprintf(str, PDF_IMAGE_INSERT, 200/*(uint8_t)(width/image->Width)*/, -70/*(uint8_t)(height/image->Height)*/, x, PDF_PAGE_HEIGHT - y, PDF_ImagesNum);
+  res = PDF_AddStream(str);
+  if (res != PDF_ERR_NONE)
+    return res;
+  /**< increase number of used images */
+  PDF_ImagesNum++;
+
+  return PDF_ERR_NONE;
 }
 
 /** \brief Finish PDF generation, close handlers, save tables and write end of the file

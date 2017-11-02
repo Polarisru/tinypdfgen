@@ -98,8 +98,17 @@ typedef struct
   char *Text;
 } TPdfText;
 
+typedef struct
+{
+  uint16_t Width;
+  uint16_t Height;
+  uint16_t Length;
+  const uint8_t *Data;
+} TPdfImage;
+
 extern const char PDF_IMAGE_INSERT[];
 extern const char PDF_FRAME_STRING[];
+extern const uint8_t PDF_TEST_IMAGE[];
 
 extern uint8_t PDF_Start(char *name, char *title, char *author);
 extern uint8_t PDF_AddPage(bool has_header);
@@ -110,6 +119,7 @@ extern uint8_t PDF_AddTextToHeader(uint16_t x, uint16_t y, uint8_t f_size, char 
 extern uint8_t PDF_AddFrameToHeader(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint32_t color, bool fill);
 extern void PDF_SetFont(uint8_t font);
 extern uint8_t PDF_SetColor(uint32_t color);
+extern uint8_t PDF_AddImage(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const TPdfImage *image);
 extern uint8_t PDF_Finish(void);
 extern void PDF_Abort(void);
 

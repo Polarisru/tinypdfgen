@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include "pdf.h"
 
+extern const TPdfImage rainbow_img;
+
 int main()
 {
   printf("Hello world!\n");
@@ -25,6 +27,7 @@ int main()
     PDF_AddText(100, 360, 14, "Test 9");
     PDF_AddText(100, 390, 14, "Test 10");
     //PDF_AddStream((char*)PDF_IMAGE_INSERT);
+    PDF_AddImage(300, 142, 640, 200, &rainbow_img);
     PDF_AddPage(true);
     PDF_SetColor(0xFF8000);
     PDF_AddText(100, 120, 18, "Test 2");
