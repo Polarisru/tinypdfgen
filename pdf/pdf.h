@@ -24,8 +24,9 @@
 
 #define PDF_PAGE_HEIGHT         842
 
-#define PDF_BIT_PAGE            0x8000
-#define PDF_MAX_BLOCKLEN        0x7FFF
+#define PDF_BIT_PAGE            0x80000000
+#define PDF_BIT_IMAGE           0x40000000
+#define PDF_MAX_BLOCKLEN        0x3FFFFFFF
 
 #define PDF_ERR_NONE            0
 #define PDF_ERR_FILE            1

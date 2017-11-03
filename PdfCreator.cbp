@@ -13,10 +13,14 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-g" />
+					<Add option="-fdata-sections" />
+					<Add option="-ffunction-sections" />
 					<Add directory="pdf" />
 				</Compiler>
 				<Linker>
 					<Add option="-Wl,--Map=pdf.map" />
+					<Add option="-Wl,-gc-sections" />
+					<Add option="-Wl,-static" />
 				</Linker>
 			</Target>
 			<Target title="Release">
@@ -40,6 +44,12 @@
 			<Add option="-Wall" />
 		</Compiler>
 		<Unit filename="main.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="monkey.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="onion.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="pdf/arc4.c">

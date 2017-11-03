@@ -17,7 +17,8 @@ const char PDF_FIRST_OBJECT[] = "1 0 obj\n<< /Type /Catalog /Pages 2 0 R>>\nendo
 const char PDF_PAGES_OBJ_START[] = "2 0 obj\n<< /Type /Pages /Count %d /Kids [";
 const char PDF_PAGES_OBJ_END[] = "] /MediaBox [0 0 595 842]>>\nendobj\n";
 const char PDF_RESOURCE_START[] = "3 0 obj\n<</Font <<";
-const char PDF_RESOURCE_END[] = ">> /XObject <</Im0 6 0 R>>>>\nendobj\n";
+const char PDF_RESOURCE_CONT[] = ">> /XObject <<";
+const char PDF_RESOURCE_END[] = ">>>>\nendobj\n";
 //const char PDF_RESOURCE_END[] = ">>>>\nendobj\n";
 const char PDF_PAGE_OBJ_START[] = "%d 0 obj\n<< /Type /Page /Parent 2 0 R /Resources 3 0 R /Contents [";
 const char PDF_PAGE_OBJ_END[] = "]>>\nendobj\n";
@@ -43,16 +44,21 @@ const char PDF_STREAM_OBJ_END[] = "endstream\nendobj\n";
 const char PDF_STREAM_OBJ_END2[] = "\nendstream\nendobj\n";
 const char PDF_FONT_OBJ_START[] = "%d 0 obj\n<</Type /Font /Subtype /Type1 /BaseFont /";
 const char PDF_FONT_OBJ_END[] = "%s>>\nendobj\n";
-
+const char PDF_OBJ_HEADER[] = "%d 0 obj\n";
 const char PDF_XREF_START[] = "xref\n0 %d\n";
 const char PDF_XREF_FIRST[] = "0000000000 65535 f \n";
 const char PDF_XREF_RECORD[] = "%010d 00000 %c \n";
 const char PDF_XREF_END[] = "startxref\n%d\n";
+const char PDF_IMAGE_HEADER1[] = "<</Type /XObject /Subtype /Image /BitsPerComponent 8 /ColorSpace /DeviceRGB /Filter /FlateDecode /Name ";
+const char PDF_IMAGE_HEADER2[] = "/Im%d /Width %d /Height %d /Length %d>>\nstream\n";
+const char PDF_IMAGE_INSERT[] = "q %d 0 0 %d %d %d cm /Im%d Do Q\n";
+const char PDF_SET_COLOR[] = "%.2f %.2f %.2f rg\n";
+
 const char PDF_CONT_FMT[] = "%d 0 R ";
 const char PDF_DATE_FMT[] = "%4d%02d%02d%02d%02d%02dZ";
 const char PDF_FONT_FMT[] = "/F%d %d 0 R ";
-const char PDF_SET_COLOR[] = "%.2f %.2f %.2f rg\n";
 const char PDF_FRAME_FMT[] = "q %.2f %.2f %.2f rg %d %d %d %d re %c Q\n";
+const char PDF_IMAGE_FMT[] = "/Im%d %d 0 R";
 
 const uint8_t PDF_DUMMY_ID[] = {0xc5, 0x27, 0x49, 0x0a, 0x70, 0x6a, 0x90, 0x91, 0x07, 0xa9, 0xce, 0xee, 0xdf, 0x94, 0x97, 0xb3};
 
@@ -63,17 +69,6 @@ const uint8_t PDF_PADDING_STRING[] = {
     0x2F, 0x0C, 0xA9, 0xFE, 0x64, 0x53, 0x69, 0x7A
 };
 
-/*const uint8_t PDF_TEST_IMAGE[] = {0x80, 0x80, 0x80, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0x80, 0x80, 0x80, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF,
-                                  0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0x80, 0x80, 0x80, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0xE2, 0x84, 0xFF, 0x80, 0x80, 0x80};*/
-const uint8_t PDF_TEST_IMAGE[] = {0x78, 0x9C, 0x7B, 0xD4, 0xF2, 0xFF, 0x11, 0x29, 0x08, 0x00, 0xA9, 0x35, 0x26, 0x51};
-//"EEEEEEEEEEEEEEEE";
-//const char PDF_IMAGE_HEADER[] = "6 0 obj\n<</Type /XObject /Subtype /Image /BitsPerComponent 8 /ColorSpace /DeviceRGB /Filter /FlateDecode /Name /Im0 /Width 4 /Height 4 /Length 14>>\nstream\n";
-const char PDF_OBJ_HEADER[] = "%d 0 obj\n";
-const char PDF_IMAGE_HEADER1[] = "<</Type /XObject /Subtype /Image /BitsPerComponent 8 /ColorSpace /DeviceRGB /Filter /FlateDecode /Name ";
-const char PDF_IMAGE_HEADER2[] = "/Im%d /Width %d /Height %d /Length %d>>\nstream\n";
-//"11 0 obj\n<</Type /XObject /Subtype /Image /Name /Im1 /Width 4 /Height 4 /BitsPerComponent 8 /ColorSpace /DeviceGray /Length 16>>\nstream\n";
-//const char PDF_IMAGE_INSERT[] = "q 20 0 0 20 500 700 cm /Im1 Do Q\n"; //20 - width, 0, 0, 20 - height, 500 - x offset, 700 - y offset
-const char PDF_IMAGE_INSERT[] = "q %d 0 0 %d %d %d cm /Im%d Do Q\n";
 
 const char* PDF_FONTS_NAMES[PDF_FONT_LAST] =
 {
@@ -102,14 +97,14 @@ const char* PDF_FONTS_NAMES[PDF_FONT_LAST] =
 //object 11 - font data (embedded font)
 //object 12 and following - text blocks and pages
 
-uint16_t PDF_XrefTable[PDF_MAX_NUM]; //big array to store objects positions
+uint32_t PDF_XrefTable[PDF_MAX_NUM]; //big array to store objects positions
 
 uint16_t PDF_CurrObject;  //current PDF object
 uint16_t PDF_PageNum;     //number of the page
 uint16_t PDF_LastObject;  //last saved PDF object
 uint16_t PDF_LastHeader;  //last PDF object marked as header
 bool PDF_HasHeader;       //marker for pages using header/footer
-uint32_t PDF_XrefPos;     //current Xref position
+//uint32_t PDF_XrefPos;     //current Xref position
 uint8_t PDF_Font;         //current PDF font
 uint16_t PDF_UsedFonts;   //list of used fonts
 uint16_t PDF_FirstFontObject;   //first font object
@@ -493,7 +488,7 @@ uint8_t PDF_Start(char *name, char *title, char *author)
   PDF_LastObject = PDF_CurrObject;
   PDF_LastHeader = PDF_CurrObject;
   PDF_PageNum = 0;
-  PDF_XrefPos = 0;
+  //PDF_XrefPos = 0;
   PDF_ImagesNum = 0;
   PDF_Font = PDF_FONT_TIMES;
   PDF_UsedFonts = (1 << PDF_Font);
@@ -616,15 +611,15 @@ uint8_t PDF_WritePage(void)
   if (PDF_Handler == NULL)
     return PDF_ERR_NOTSTARTED;
 
-  if ((pos - PDF_XrefPos) > PDF_MAX_BLOCKLEN)
-    return PDF_ERR_LONGBLOCK;
+  //if ((pos - PDF_XrefPos) > PDF_MAX_BLOCKLEN)
+  //  return PDF_ERR_LONGBLOCK;
 
   if (PDF_CurrObject>=PDF_MAX_NUM)
     return PDF_ERR_MAXNUM;
 
-  PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos) | PDF_BIT_PAGE;
-  PDF_XrefPos = pos;
-  //PDF_XrefTable[PDF_CurrObject].isPage = true;
+  //PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos) | PDF_BIT_PAGE;
+  //PDF_XrefPos = pos;
+  PDF_XrefTable[PDF_CurrObject] = pos | PDF_BIT_PAGE;
   sprintf(str, PDF_PAGE_OBJ_START, PDF_CurrObject);
   if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
     return PDF_ERR_FILE;
@@ -633,6 +628,8 @@ uint8_t PDF_WritePage(void)
     /* add header objects to a page */
     for (len=PDF_OBJNUM_LAST; len<PDF_LastHeader; len++)
     {
+      if (PDF_XrefTable[len] & PDF_BIT_IMAGE)
+        continue;
       sprintf(str, PDF_CONT_FMT, len);
       if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
         return PDF_ERR_FILE;
@@ -641,6 +638,8 @@ uint8_t PDF_WritePage(void)
   /* write list of objects to a page */
   for (len=PDF_LastObject; len<PDF_CurrObject; len++)
   {
+    if (PDF_XrefTable[len] & PDF_BIT_IMAGE)
+      continue;
     sprintf(str, PDF_CONT_FMT, len);
     if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
       return PDF_ERR_FILE;
@@ -689,12 +688,13 @@ uint8_t PDF_AddStream(char *stream)
   if (PDF_CurrObject >= PDF_MAX_NUM)
     return PDF_ERR_MAXNUM;
 
-  if ((pos - PDF_XrefPos) > PDF_MAX_BLOCKLEN)
-    return PDF_ERR_LONGBLOCK;
+  //if ((pos - PDF_XrefPos) > PDF_MAX_BLOCKLEN)
+  //  return PDF_ERR_LONGBLOCK;
 
   size = strlen(stream);
-  PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos);
-  PDF_XrefPos = pos;
+  //PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos);
+  //PDF_XrefPos = pos;
+  PDF_XrefTable[PDF_CurrObject] = pos;
   /* write stream header */
   sprintf(str, PDF_STREAM_OBJ_START, PDF_CurrObject, size);
   if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
@@ -744,8 +744,8 @@ uint8_t PDF_AddText(uint16_t x, uint16_t y, uint8_t f_size, char *text)
   if (PDF_CurrObject >= PDF_MAX_NUM)
     return PDF_ERR_MAXNUM;
 
-  if ((pos - PDF_XrefPos) > PDF_MAX_BLOCKLEN)
-    return PDF_ERR_LONGBLOCK;
+  //if ((pos - PDF_XrefPos) > PDF_MAX_BLOCKLEN)
+  //  return PDF_ERR_LONGBLOCK;
 
   size = strlen(text);
   len = size;
@@ -755,8 +755,9 @@ uint8_t PDF_AddText(uint16_t x, uint16_t y, uint8_t f_size, char *text)
     if (PDF_CheckEsc(text[i]))
       size++;
   }
-  PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos);
-  PDF_XrefPos = pos;
+  //PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos);
+  //PDF_XrefPos = pos;
+  PDF_XrefTable[PDF_CurrObject] = pos;
   sprintf(str, PDF_TEXT_START, PDF_Font + 1, f_size, x, PDF_PAGE_HEIGHT - y);
   len = strlen(str);
   len += size;
@@ -909,9 +910,9 @@ uint8_t PDF_AddImage(uint16_t x, uint16_t y, uint16_t width, uint16_t height, co
   if (PDF_CurrObject >= PDF_MAX_NUM)
     return PDF_ERR_MAXNUM;
 
-  PDF_XrefTable[PDF_OBJNUM_IMAGE/*PDF_CurrObject*/] = PDF_WR_ftell(PDF_Handler);
+  PDF_XrefTable[PDF_CurrObject] = PDF_WR_ftell(PDF_Handler) | PDF_BIT_IMAGE;
   /**< write image header */
-  sprintf(str, PDF_OBJ_HEADER, 6/*PDF_CurrObject*/);
+  sprintf(str, PDF_OBJ_HEADER, PDF_CurrObject);
   if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
     return PDF_ERR_FILE;
   if (!PDF_WR_fwrite(PDF_Handler, PDF_IMAGE_HEADER1, strlen(PDF_IMAGE_HEADER1)))
@@ -934,7 +935,7 @@ uint8_t PDF_AddImage(uint16_t x, uint16_t y, uint16_t width, uint16_t height, co
     return PDF_ERR_FILE;
   PDF_CurrObject++;
   /**< write stream with image displaying instructions */
-  sprintf(str, PDF_IMAGE_INSERT, 200/*(uint8_t)(width/image->Width)*/, -70/*(uint8_t)(height/image->Height)*/, x, PDF_PAGE_HEIGHT - y, PDF_ImagesNum);
+  sprintf(str, PDF_IMAGE_INSERT, 100/*(uint8_t)(width/image->Width)*/, 100/*(uint8_t)(height/image->Height)*/, x, PDF_PAGE_HEIGHT - y, PDF_ImagesNum);
   res = PDF_AddStream(str);
   if (res != PDF_ERR_NONE)
     return res;
@@ -969,8 +970,9 @@ uint8_t PDF_Finish(void)
     if (PDF_UsedFonts & (1 << len))
     {
       pos = PDF_WR_ftell(PDF_Handler);
-      PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos);
-      PDF_XrefPos = pos;
+      //PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos);
+      //PDF_XrefPos = pos;
+      PDF_XrefTable[PDF_CurrObject] = pos;
       sprintf(str, PDF_FONT_OBJ_START, PDF_CurrObject++);
       if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
         return PDF_ERR_FILE;
@@ -983,11 +985,25 @@ uint8_t PDF_Finish(void)
   PDF_XrefTable[PDF_OBJNUM_RESOURCES] = PDF_WR_ftell(PDF_Handler);
   if (!PDF_WR_fwrite(PDF_Handler, PDF_RESOURCE_START, strlen(PDF_RESOURCE_START)))
     return PDF_ERR_FILE;
+  /**< write list of fonts */
   for (len=PDF_FONT_TIMES; len<PDF_FONT_LAST; len++)
   {
     if (PDF_UsedFonts & (1 << len))
     {
       sprintf(str, PDF_FONT_FMT, len + 1, PDF_FirstFontObject++);
+      if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
+        return PDF_ERR_FILE;
+    }
+  }
+  if (!PDF_WR_fwrite(PDF_Handler, PDF_RESOURCE_CONT, strlen(PDF_RESOURCE_CONT)))
+    return PDF_ERR_FILE;
+  /**< write list of images */
+  pos = 0;
+  for (len=PDF_OBJNUM_LAST; len<=PDF_CurrObject; len++)
+  {
+    if (PDF_XrefTable[len] & PDF_BIT_IMAGE)
+    {
+      sprintf(str, PDF_IMAGE_FMT, pos++, len);
       if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
         return PDF_ERR_FILE;
     }
@@ -1021,19 +1037,20 @@ uint8_t PDF_Finish(void)
   if (!PDF_WR_fwrite(PDF_Handler, PDF_XREF_FIRST, strlen(PDF_XREF_FIRST)))
     return PDF_ERR_FILE;
   //write all xref records from array
-  PDF_XrefPos = 0;
+  //PDF_XrefPos = 0;
   for (len=PDF_OBJNUM_ROOT; len<PDF_CurrObject; len++)
   {
     if (PDF_XrefTable[len]>0)
     {
-      if (len < PDF_OBJNUM_LAST)
-      {
-        sprintf(str, PDF_XREF_RECORD, PDF_XrefTable[len], 'n');
-      } else
-      {
-        PDF_XrefPos += PDF_XrefTable[len];
-        sprintf(str, PDF_XREF_RECORD, PDF_XrefPos, 'n');
-      }
+      //if (len < PDF_OBJNUM_LAST)
+      //{
+      //  sprintf(str, PDF_XREF_RECORD, PDF_XrefTable[len] & ~(PDF_BIT_PAGE | PDF_BIT_IMAGE), 'n');
+      //} else
+      //{
+        //PDF_XrefPos += PDF_XrefTable[len];
+        //sprintf(str, PDF_XREF_RECORD, PDF_XrefPos, 'n');
+      //}
+      sprintf(str, PDF_XREF_RECORD, PDF_XrefTable[len] & ~(PDF_BIT_PAGE | PDF_BIT_IMAGE), 'n');
     } else
     {
       sprintf(str, PDF_XREF_RECORD, 0, 'f');
