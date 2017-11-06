@@ -35,6 +35,7 @@
 #define PDF_ERR_MAXNUM          4
 #define PDF_ERR_HEADER          5
 #define PDF_ERR_NOTSTARTED      6
+#define PDF_ERR_MAXIMAGES       7
 
 enum PDF_OBJNUMS
 {
@@ -44,7 +45,6 @@ enum PDF_OBJNUMS
   PDF_OBJNUM_RESOURCES,
   PDF_OBJNUM_ENC,
   PDF_OBJNUM_INFO,
-  PDF_OBJNUM_IMAGE,
   PDF_OBJNUM_LAST
 };
 

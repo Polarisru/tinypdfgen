@@ -115,7 +115,7 @@ hFile PDF_Handler;
   TPDFEncryptRec PDF_EncryptRec;  //structure for encrypting the document
 #endif // PDF_USE_ENCRYPT
 
-uint32_t PDF_ImagesTable[PDF_MAX_IMAGE_NUM];
+void *PDF_ImagesTable[PDF_MAX_IMAGES_NUM];
 
 /** \brief Convert byte value to HEX string
  *
@@ -468,6 +468,23 @@ static uint16_t PDF_PrepareString(char *src, char* dst, bool doEsc, uint16_t num
   return len;
 }
 
+/** \brief
+ *
+ * \param
+ * \param
+ * \return
+ *
+ */
+bool PDF_AddXref(uint16_t position)
+{
+  if (position > PDF_MAX_NUM)
+    return false;
+
+  PDF_XrefTable[position] = PDF_WR_ftell(PDF_Handler);
+
+  return true;
+}
+
 /** \brief Initialize everything to start generating PDF file
  *
  * \param [in] name Name of file to write
@@ -524,7 +541,8 @@ uint8_t PDF_Start(char *name, char *title, char *author)
     /**< write header */
     if (!PDF_WR_fwrite(PDF_Handler, PDF_HEADER, strlen(PDF_HEADER)))
       break;
-    PDF_XrefTable[PDF_OBJNUM_ROOT] = PDF_WR_ftell(PDF_Handler);
+    //PDF_XrefTable[PDF_OBJNUM_ROOT] = PDF_WR_ftell(PDF_Handler);
+    PDF_AddXref(PDF_OBJNUM_ROOT);
     /**< write root object */
     if (!PDF_WR_fwrite(PDF_Handler, PDF_FIRST_OBJECT, strlen(PDF_FIRST_OBJECT)))
       break;
@@ -538,7 +556,8 @@ uint8_t PDF_Start(char *name, char *title, char *author)
       //  break;
     #endif // PDF_USE_EMBFONT
     #ifdef PDF_USE_ENCRYPT
-      PDF_XrefTable[PDF_OBJNUM_ENC] = PDF_WR_ftell(PDF_Handler);
+      //PDF_XrefTable[PDF_OBJNUM_ENC] = PDF_WR_ftell(PDF_Handler);
+      PDF_AddXref(PDF_OBJNUM_ENC);
       if (!PDF_WR_fwrite(PDF_Handler, PDF_ENC_OBJ_START, strlen(PDF_ENC_OBJ_START)))
         break;
       i = PDF_EscString((uint8_t*)str, PDF_EncryptRec.user_key, PDF_PASSWD_LEN); //encoded string could contains '()\', so escape them
@@ -554,7 +573,8 @@ uint8_t PDF_Start(char *name, char *title, char *author)
         break;
     #endif
     /**< write info module */
-    PDF_XrefTable[PDF_OBJNUM_INFO] = PDF_WR_ftell(PDF_Handler);
+    //PDF_XrefTable[PDF_OBJNUM_INFO] = PDF_WR_ftell(PDF_Handler);
+    PDF_AddXref(PDF_OBJNUM_INFO);
     if (!PDF_WR_fwrite(PDF_Handler, PDF_INFO_OBJ_1, strlen(PDF_INFO_OBJ_1)))
       break;
     len = PDF_PrepareString(title, str, true, PDF_OBJNUM_INFO, true);
@@ -579,14 +599,6 @@ uint8_t PDF_Start(char *name, char *title, char *author)
       break;
     if (!PDF_WR_fwrite(PDF_Handler, PDF_INFO_OBJ_5, strlen(PDF_INFO_OBJ_5)))
       break;
-
-    /*PDF_XrefTable[PDF_OBJNUM_IMAGE] = PDF_WR_ftell(PDF_Handler);
-    if (!PDF_WR_fwrite(PDF_Handler, PDF_IMAGE_HEADER, strlen(PDF_IMAGE_HEADER)))
-      break;
-    if (!PDF_WR_fwrite(PDF_Handler, PDF_TEST_IMAGE, sizeof(PDF_TEST_IMAGE)))
-      break;
-    if (!PDF_WR_fwrite(PDF_Handler, PDF_STREAM_OBJ_END, strlen(PDF_STREAM_OBJ_END)))
-      break;*/
 
     return PDF_ERR_NONE;
   }
@@ -623,6 +635,7 @@ uint8_t PDF_WritePage(void)
   //PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos) | PDF_BIT_PAGE;
   //PDF_XrefPos = pos;
   PDF_XrefTable[PDF_CurrObject] = pos | PDF_BIT_PAGE;
+  //PDF_AddXref(PDF_CurrObject);
   sprintf(str, PDF_PAGE_OBJ_START, PDF_CurrObject);
   if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
     return PDF_ERR_FILE;
@@ -631,8 +644,8 @@ uint8_t PDF_WritePage(void)
     /* add header objects to a page */
     for (len=PDF_OBJNUM_LAST; len<PDF_LastHeader; len++)
     {
-      if (PDF_XrefTable[len] & PDF_BIT_IMAGE)
-        continue;
+      //if (PDF_XrefTable[len] & PDF_BIT_IMAGE)
+      //  continue;
       sprintf(str, PDF_CONT_FMT, len);
       if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
         return PDF_ERR_FILE;
@@ -641,8 +654,8 @@ uint8_t PDF_WritePage(void)
   /* write list of objects to a page */
   for (len=PDF_LastObject; len<PDF_CurrObject; len++)
   {
-    if (PDF_XrefTable[len] & PDF_BIT_IMAGE)
-      continue;
+    //if (PDF_XrefTable[len] & PDF_BIT_IMAGE)
+    //  continue;
     sprintf(str, PDF_CONT_FMT, len);
     if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
       return PDF_ERR_FILE;
@@ -697,7 +710,8 @@ uint8_t PDF_AddStream(char *stream)
   size = strlen(stream);
   //PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos);
   //PDF_XrefPos = pos;
-  PDF_XrefTable[PDF_CurrObject] = pos;
+  //PDF_XrefTable[PDF_CurrObject] = pos;
+  PDF_AddXref(PDF_CurrObject);
   /* write stream header */
   sprintf(str, PDF_STREAM_OBJ_START, PDF_CurrObject, size);
   if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
@@ -760,7 +774,8 @@ uint8_t PDF_AddText(uint16_t x, uint16_t y, uint8_t f_size, char *text)
   }
   //PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos);
   //PDF_XrefPos = pos;
-  PDF_XrefTable[PDF_CurrObject] = pos;
+  //PDF_XrefTable[PDF_CurrObject] = pos;
+  PDF_AddXref(PDF_CurrObject);
   sprintf(str, PDF_TEXT_START, PDF_Font + 1, f_size, x, PDF_PAGE_HEIGHT - y);
   len = strlen(str);
   len += size;
@@ -905,10 +920,12 @@ uint8_t PDF_AddImage(uint16_t x, uint16_t y, uint16_t width, uint16_t height, co
 {
   char str[PDF_BLOCK_SIZE*2];
   uint8_t res;
-  uint16_t i, len;
 
   if (PDF_Handler == NULL)
     return PDF_ERR_NOTSTARTED;
+
+  if (PDF_ImagesNum >= PDF_MAX_IMAGES_NUM)
+    return PDF_ERR_MAXIMAGES;
 
   if (PDF_CurrObject >= PDF_MAX_NUM)
     return PDF_ERR_MAXNUM;
@@ -952,7 +969,8 @@ uint8_t PDF_Finish(void)
       pos = PDF_WR_ftell(PDF_Handler);
       //PDF_XrefTable[PDF_CurrObject] = (uint16_t)(pos - PDF_XrefPos);
       //PDF_XrefPos = pos;
-      PDF_XrefTable[PDF_CurrObject] = pos;
+      //PDF_XrefTable[PDF_CurrObject] = pos;
+      PDF_AddXref(PDF_CurrObject);
       sprintf(str, PDF_FONT_OBJ_START, PDF_CurrObject++);
       if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
         return PDF_ERR_FILE;
@@ -961,21 +979,22 @@ uint8_t PDF_Finish(void)
         return PDF_ERR_FILE;
     }
   }
-  /**< write ist of used images */
+  /**< write list of used images */
   PDF_FirstImageObject = PDF_CurrObject;
-  for (len=0; len<PDF_ImagesNum; len++)
+  for (pos=0; pos<PDF_ImagesNum; pos++)
   {
-    TPdfImage *image = PDF_ImagesTable[len];
+    TPdfImage *image = (TPdfImage*)PDF_ImagesTable[pos];
     uint32_t i;
 
-    PDF_XrefTable[PDF_CurrObject] = PDF_WR_ftell(PDF_Handler) | PDF_BIT_IMAGE;
+    //PDF_XrefTable[PDF_CurrObject] = PDF_WR_ftell(PDF_Handler) | PDF_BIT_IMAGE;
+    PDF_AddXref(PDF_CurrObject);
     /**< write image header */
     sprintf(str, PDF_OBJ_HEADER, PDF_CurrObject);
     if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
       return PDF_ERR_FILE;
     if (!PDF_WR_fwrite(PDF_Handler, PDF_IMAGE_HEADER1, strlen(PDF_IMAGE_HEADER1)))
       return PDF_ERR_FILE;
-    sprintf(str, PDF_IMAGE_HEADER2, PDF_ImagesNum, image->Width, image->Height, image->Length);
+    sprintf(str, PDF_IMAGE_HEADER2, pos, image->Width, image->Height, image->Length);
     if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
       return PDF_ERR_FILE;
     /**< write image data */
@@ -994,7 +1013,8 @@ uint8_t PDF_Finish(void)
     PDF_CurrObject++;
   }
   /**< write resources object */
-  PDF_XrefTable[PDF_OBJNUM_RESOURCES] = PDF_WR_ftell(PDF_Handler);
+  //PDF_XrefTable[PDF_OBJNUM_RESOURCES] = PDF_WR_ftell(PDF_Handler);
+  PDF_AddXref(PDF_OBJNUM_RESOURCES);
   if (!PDF_WR_fwrite(PDF_Handler, PDF_RESOURCE_START, strlen(PDF_RESOURCE_START)))
     return PDF_ERR_FILE;
   /**< write list of fonts */
@@ -1030,7 +1050,8 @@ uint8_t PDF_Finish(void)
   if (!PDF_WR_fwrite(PDF_Handler, PDF_RESOURCE_END, strlen(PDF_RESOURCE_END)))
     return PDF_ERR_FILE;
   /**< write pages list */
-  PDF_XrefTable[PDF_OBJNUM_PAGES] = PDF_WR_ftell(PDF_Handler);
+  //PDF_XrefTable[PDF_OBJNUM_PAGES] = PDF_WR_ftell(PDF_Handler);
+  PDF_AddXref(PDF_OBJNUM_PAGES);
   sprintf(str, PDF_PAGES_OBJ_START, PDF_PageNum);
   if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
     return PDF_ERR_FILE;
