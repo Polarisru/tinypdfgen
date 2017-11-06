@@ -5,6 +5,7 @@
 //#define PDF_USE_EMBFONT
 #define PDF_BLOCK_SIZE          32
 #define PDF_MAX_NUM             500
+#define PDF_MAX_IMAGE_NUM       10
 #define PDF_GEN_NAME            "TinyPDFGen"
 #define PDF_OWNER_PASS          "PASS1234"
 

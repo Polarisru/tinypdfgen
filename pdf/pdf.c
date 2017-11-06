@@ -108,11 +108,14 @@ bool PDF_HasHeader;       //marker for pages using header/footer
 uint8_t PDF_Font;         //current PDF font
 uint16_t PDF_UsedFonts;   //list of used fonts
 uint16_t PDF_FirstFontObject;   //first font object
+uint16_t PDF_FirstImageObject;  //first image object
 uint8_t PDF_ImagesNum;    //number of images
 hFile PDF_Handler;
 #ifdef PDF_USE_ENCRYPT
   TPDFEncryptRec PDF_EncryptRec;  //structure for encrypting the document
 #endif // PDF_USE_ENCRYPT
+
+uint32_t PDF_ImagesTable[PDF_MAX_IMAGE_NUM];
 
 /** \brief Convert byte value to HEX string
  *
@@ -910,30 +913,7 @@ uint8_t PDF_AddImage(uint16_t x, uint16_t y, uint16_t width, uint16_t height, co
   if (PDF_CurrObject >= PDF_MAX_NUM)
     return PDF_ERR_MAXNUM;
 
-  PDF_XrefTable[PDF_CurrObject] = PDF_WR_ftell(PDF_Handler) | PDF_BIT_IMAGE;
-  /**< write image header */
-  sprintf(str, PDF_OBJ_HEADER, PDF_CurrObject);
-  if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
-    return PDF_ERR_FILE;
-  if (!PDF_WR_fwrite(PDF_Handler, PDF_IMAGE_HEADER1, strlen(PDF_IMAGE_HEADER1)))
-    return PDF_ERR_FILE;
-  sprintf(str, PDF_IMAGE_HEADER2, PDF_ImagesNum, image->Width, image->Height, image->Length);
-  if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
-    return PDF_ERR_FILE;
-  /**< write image data */
-  i = 0;
-  while (i < image->Length)
-  {
-    len = PDF_BLOCK_SIZE;
-    if ((image->Length - i) < PDF_BLOCK_SIZE)
-      len = image->Length - i;
-    if (!PDF_WR_fwrite(PDF_Handler, &(image->Data[i]), len))
-      return PDF_ERR_FILE;
-    i += len;
-  }
-  if (!PDF_WR_fwrite(PDF_Handler, PDF_STREAM_OBJ_END, strlen(PDF_STREAM_OBJ_END)))
-    return PDF_ERR_FILE;
-  PDF_CurrObject++;
+  PDF_ImagesTable[PDF_ImagesNum] = (void*)image;
   /**< write stream with image displaying instructions */
   sprintf(str, PDF_IMAGE_INSERT, 100/*(uint8_t)(width/image->Width)*/, 100/*(uint8_t)(height/image->Height)*/, x, PDF_PAGE_HEIGHT - y, PDF_ImagesNum);
   res = PDF_AddStream(str);
@@ -981,6 +961,38 @@ uint8_t PDF_Finish(void)
         return PDF_ERR_FILE;
     }
   }
+  /**< write ist of used images */
+  PDF_FirstImageObject = PDF_CurrObject;
+  for (len=0; len<PDF_ImagesNum; len++)
+  {
+    TPdfImage *image = PDF_ImagesTable[len];
+    uint32_t i;
+
+    PDF_XrefTable[PDF_CurrObject] = PDF_WR_ftell(PDF_Handler) | PDF_BIT_IMAGE;
+    /**< write image header */
+    sprintf(str, PDF_OBJ_HEADER, PDF_CurrObject);
+    if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
+      return PDF_ERR_FILE;
+    if (!PDF_WR_fwrite(PDF_Handler, PDF_IMAGE_HEADER1, strlen(PDF_IMAGE_HEADER1)))
+      return PDF_ERR_FILE;
+    sprintf(str, PDF_IMAGE_HEADER2, PDF_ImagesNum, image->Width, image->Height, image->Length);
+    if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
+      return PDF_ERR_FILE;
+    /**< write image data */
+    i = 0;
+    while (i < image->Length)
+    {
+      len = PDF_BLOCK_SIZE;
+      if ((image->Length - i) < PDF_BLOCK_SIZE)
+        len = image->Length - i;
+      if (!PDF_WR_fwrite(PDF_Handler, &(image->Data[i]), len))
+        return PDF_ERR_FILE;
+      i += len;
+    }
+    if (!PDF_WR_fwrite(PDF_Handler, PDF_STREAM_OBJ_END, strlen(PDF_STREAM_OBJ_END)))
+      return PDF_ERR_FILE;
+    PDF_CurrObject++;
+  }
   /**< write resources object */
   PDF_XrefTable[PDF_OBJNUM_RESOURCES] = PDF_WR_ftell(PDF_Handler);
   if (!PDF_WR_fwrite(PDF_Handler, PDF_RESOURCE_START, strlen(PDF_RESOURCE_START)))
@@ -998,15 +1010,22 @@ uint8_t PDF_Finish(void)
   if (!PDF_WR_fwrite(PDF_Handler, PDF_RESOURCE_CONT, strlen(PDF_RESOURCE_CONT)))
     return PDF_ERR_FILE;
   /**< write list of images */
-  pos = 0;
-  for (len=PDF_OBJNUM_LAST; len<=PDF_CurrObject; len++)
+//  pos = 0;
+//  for (len=PDF_OBJNUM_LAST; len<=PDF_CurrObject; len++)
+//  {
+//    if (PDF_XrefTable[len] & PDF_BIT_IMAGE)
+//    {
+//      sprintf(str, PDF_IMAGE_FMT, pos++, len);
+//      if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
+//        return PDF_ERR_FILE;
+//    }
+//  }
+  pos = PDF_FirstImageObject;
+  for (len=0; len<PDF_ImagesNum; len++)
   {
-    if (PDF_XrefTable[len] & PDF_BIT_IMAGE)
-    {
-      sprintf(str, PDF_IMAGE_FMT, pos++, len);
-      if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
-        return PDF_ERR_FILE;
-    }
+    sprintf(str, PDF_IMAGE_FMT, len, pos++);
+    if (!PDF_WR_fwrite(PDF_Handler, str, strlen(str)))
+      return PDF_ERR_FILE;
   }
   if (!PDF_WR_fwrite(PDF_Handler, PDF_RESOURCE_END, strlen(PDF_RESOURCE_END)))
     return PDF_ERR_FILE;
