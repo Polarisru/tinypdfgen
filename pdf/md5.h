@@ -21,8 +21,8 @@ typedef struct
 #define MD5STEP(f, w, x, y, z, data, s) \
  ( w += f(x, y, z) + data,  w = w<<s | w>>(32-s),  w += x )
 
-extern void MD5_Init(TMD5Context *ctx);
-extern void MD5_Update(TMD5Context *ctx, uint8_t *buf, uint32_t len);
-extern void MD5_Final(uint8_t digest[16], TMD5Context *ctx);
+void MD5_Init(TMD5Context *ctx);
+void MD5_Update(TMD5Context *ctx, uint8_t *buf, uint32_t len);
+void MD5_Final(uint8_t digest[16], TMD5Context *ctx);
 
 #endif

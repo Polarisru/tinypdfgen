@@ -12,6 +12,7 @@
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Compiler>
+					<Add option="-O1" />
 					<Add option="-g" />
 					<Add option="-fdata-sections" />
 					<Add option="-ffunction-sections" />
@@ -19,8 +20,9 @@
 				</Compiler>
 				<Linker>
 					<Add option="-Wl,--Map=pdf.map" />
-					<Add option="-Wl,-gc-sections" />
-					<Add option="-Wl,-static" />
+					<Add option="-Wl,--gc-sections" />
+					<Add option="-Wl,--cref" />
+					<Add option="-Wl,--static" />
 				</Linker>
 			</Target>
 			<Target title="Release">
@@ -29,14 +31,17 @@
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Compiler>
-					<Add option="-ffunction-sections" />
+					<Add option="-O1" />
 					<Add option="-fdata-sections" />
+					<Add option="-ffunction-sections" />
+					<Add option="-save-temps=obj" />
 					<Add directory="pdf" />
 				</Compiler>
 				<Linker>
-					<Add option="-s" />
 					<Add option="-Wl,--Map=pdf.map" />
 					<Add option="-Wl,--gc-sections" />
+					<Add option="-Wl,--cref" />
+					<Add option="-Wl,--static" />
 				</Linker>
 			</Target>
 		</Build>

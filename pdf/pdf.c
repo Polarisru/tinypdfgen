@@ -216,7 +216,7 @@ static void PDF_PadOrTruncatePasswd(const char *pwd, uint8_t *new_pwd)
  * \return
  *
  */
-static void PDF_Encrypt_Init(TPDFEncryptRec *attr)
+inline static void PDF_Encrypt_Init(TPDFEncryptRec *attr)
 {
   memset(attr, 0, sizeof(TPDFEncryptRec));
   attr->mode = PDF_ENCRYPT_R3;
@@ -233,7 +233,7 @@ static void PDF_Encrypt_Init(TPDFEncryptRec *attr)
  * \return
  *
  */
-static void PDF_Encrypt_CreateOwnerKey(TPDFEncryptRec *attr)
+inline static void PDF_Encrypt_CreateOwnerKey(TPDFEncryptRec *attr)
 {
   ARC4_Ctx_Rec rc4_ctx;
   TMD5Context md5_ctx;
@@ -294,7 +294,7 @@ static void PDF_Encrypt_CreateOwnerKey(TPDFEncryptRec *attr)
  * \return
  *
  */
-static void PDF_Encrypt_CreateEncryptionKey(TPDFEncryptRec *attr)
+inline static void PDF_Encrypt_CreateEncryptionKey(TPDFEncryptRec *attr)
 {
   TMD5Context md5_ctx;
   uint8_t tmp_flg[4];
@@ -338,7 +338,7 @@ static void PDF_Encrypt_CreateEncryptionKey(TPDFEncryptRec *attr)
  * \return
  *
  */
-static void PDF_Encrypt_CreateUserKey(TPDFEncryptRec *attr)
+inline static void PDF_Encrypt_CreateUserKey(TPDFEncryptRec *attr)
 {
   ARC4_Ctx_Rec ctx;
   uint8_t digest[MD5_KEY_LEN];
@@ -394,7 +394,7 @@ static void PDF_Encrypt_CreateUserKey(TPDFEncryptRec *attr)
  * \return
  *
  */
-static void PDF_Encrypt_InitKey(TPDFEncryptRec *attr, uint32_t object_id, uint16_t gen_no)
+inline static void PDF_Encrypt_InitKey(TPDFEncryptRec *attr, uint32_t object_id, uint16_t gen_no)
 {
   TMD5Context md5_ctx;
   uint8_t key_len;
@@ -421,7 +421,7 @@ static void PDF_Encrypt_InitKey(TPDFEncryptRec *attr, uint32_t object_id, uint16
  * \return
  *
  */
-static void PDF_Encrypt_Reset(TPDFEncryptRec *attr)
+inline static void PDF_Encrypt_Reset(TPDFEncryptRec *attr)
 {
   uint8_t key_len = (attr->key_len + 5 > PDF_ENCRYPT_KEY_MAX) ? PDF_ENCRYPT_KEY_MAX : attr->key_len + 5;
 
@@ -435,7 +435,7 @@ static void PDF_Encrypt_Reset(TPDFEncryptRec *attr)
  * \return
  *
  */
-static void PDF_Encrypt_CryptBuf(TPDFEncryptRec *attr, uint8_t *src, uint8_t *dst, uint32_t len)
+inline static void PDF_Encrypt_CryptBuf(TPDFEncryptRec *attr, uint8_t *src, uint8_t *dst, uint32_t len)
 {
   ARC4_CryptBuf(&attr->arc4ctx, src, dst, len);
 }
@@ -696,7 +696,7 @@ uint8_t PDF_AddStream(char *stream)
   uint16_t len;
   uint16_t size;
   uint16_t i;
-  uint32_t pos = PDF_WR_ftell(PDF_Handler);
+  //uint32_t pos = PDF_WR_ftell(PDF_Handler);
 
   if (PDF_Handler == NULL)
     return PDF_ERR_NOTSTARTED;
@@ -753,7 +753,7 @@ uint8_t PDF_AddText(uint16_t x, uint16_t y, uint8_t f_size, char *text)
   uint16_t len;
   uint16_t size;
   uint16_t i;
-  uint32_t pos = PDF_WR_ftell(PDF_Handler);
+  //uint32_t pos = PDF_WR_ftell(PDF_Handler);
 
   if (PDF_Handler == NULL)
     return PDF_ERR_NOTSTARTED;
