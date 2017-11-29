@@ -51,7 +51,7 @@ void ARC4_CryptBuf(ARC4_Ctx_Rec *ctx, uint8_t *in, uint8_t *out, uint16_t len)
   uint8_t tmp;
 
   for (i = 0; i < len; i++)
-	{
+  {
     ctx->idx1 = (uint8_t)((ctx->idx1 + 1) % 256);
     ctx->idx2 = (uint8_t)((ctx->idx2 +  ctx->state[ctx->idx1]) % 256);
 
