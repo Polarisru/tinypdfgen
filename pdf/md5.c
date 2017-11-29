@@ -152,7 +152,7 @@ void MD5_Update(TMD5Context *ctx, uint8_t *buf, uint32_t len)
 
   // Handle any leading odd-sized chunks
   if (t)
-	{
+  {
     uint8_t *p = (uint8_t *) ctx->in + t;
 
     t = 64 - t;
@@ -206,7 +206,7 @@ void MD5_Final(uint8_t digest[16], TMD5Context *ctx)
 
   // Pad out to 56 mod 64
   if (count < 8)
-	{
+  {
     // Two lots of padding:  Pad the first block to 64 bytes
     memset(p, 0, count);
     MD5_ByteReverse(ctx->in, 16);
@@ -215,7 +215,7 @@ void MD5_Final(uint8_t digest[16], TMD5Context *ctx)
     // Now fill the next block with 56 bytes
     memset(ctx->in, 0, 56);
   } else
-	{
+  {
     // Pad block to 56 bytes
     memset(p, 0, count - 8);
   }
